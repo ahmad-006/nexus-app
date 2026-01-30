@@ -1,0 +1,29 @@
+# --- Security & Secrets ---
+# Never, ever push your credentials.
+.env
+.env.local
+.env.*.local
+
+# --- Dependency Bloat ---
+# We don't track the 'kitchen,' just the 'recipe' (package.json).
+node_modules/
+bun.lockb
+package-lock.json
+
+# --- Environment & OS Garbage ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Build & Logs ---
+dist/
+build/
+*.log
+error.log
+npm-debug.log*
+
+# --- Project Specifics ---
+# If you have any local testing files or DB dumps
+/temp
+/dumps
