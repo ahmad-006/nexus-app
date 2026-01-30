@@ -1,8 +1,15 @@
 import express from "express";
+import { mongoConnect } from "./util/database";
 
 const app = express();
-app.use("/", (req, res) => {
-  res.send("Welcome to the server");
+
+app.use("/", (req, res, next) => {
+  res.json({
+    message: "hello from server",
+  });
 });
 
-app.listen(3000);
+mongoConnect(() => {
+  console.log("DB CONNECTED SUCCESSFULLY");
+  app.listen(8000);
+});
