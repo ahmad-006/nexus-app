@@ -5,11 +5,14 @@ import {
   patchTicket,
   deleteTicket,
   getTicket,
+  patchTicketStatus,
 } from "../controllers/ticket.js";
+import { isAdmin, isMember } from "../middleware/role-check.js";
 
-const router = express.Router();
+const Router = express.Router();
 
-router.route("/").get(getTickets).post(postTicket);
-router.route("/:id").get(getTicket).patch(patchTicket).delete(deleteTicket);
+Router.route("/").get(getTickets).post(postTicket);
+Router.route("/:id").get(getTicket).patch(patchTicket).delete(deleteTicket);
+Router.route("/:id/status").patch(isMember, patchTicketStatus);
 
-export default router;
+export default Router;
