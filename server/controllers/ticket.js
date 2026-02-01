@@ -60,7 +60,7 @@ const postTicket = async (req, res) => {
 // PATCH /api/tickets/:id
 const patchTicket = async (req, res) => {
   const { id } = req.params;
-  const { title, description, status: newStatus } = req.body;
+  const { title, description } = req.body;
   const updatedData = {};
 
   try {
@@ -69,21 +69,6 @@ const patchTicket = async (req, res) => {
 
     if (title) updatedData.title = title;
     if (description) updatedData.description = description;
-
-    if (newStatus) {
-      const allowedTransitions = {
-        TODO: ["IN_PROGRESS"],
-        IN_PROGRESS: ["TODO", "DONE"],
-        DONE: ["IN_PROGRESS", "TODO"],
-      };
-
-      if (!allowedTransitions[oldData.status].includes(newStatus)) {
-        return res.status(400).json({
-          message: `Invalid transition from ${oldData.status} to ${newStatus}`,
-        });
-      }
-      updatedData.status = newStatus;
-    }
 
     if (Object.keys(updatedData).length === 0) {
       return res.status(400).json({ message: "Nothing to update" });
