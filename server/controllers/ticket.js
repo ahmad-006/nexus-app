@@ -102,6 +102,42 @@ const patchTicket = async (req, res) => {
   }
 };
 
+export const patchTicketStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status: newStatus } = req.body;
+    const updatedData = {};
+    const oldData = await Ticket.getById(id);
+    if (!oldData) return res.status(404).json({ message: "Ticket not found" });
+
+    if (newStatus) {
+      const allowedTransitions = {
+        TODO: ["IN_PROGRESS"],
+        IN_PROGRESS: ["TODO", "DONE"],
+        DONE: ["IN_PROGRESS", "TODO"],
+      };
+
+      if (!allowedTransitions[oldData.status].includes(newStatus)) {
+        return res.status(400).json({
+          message: `Invalid transition from ${oldData.status} to ${newStatus}`,
+        });
+      }
+      updatedData.status = newStatus;
+      await Ticket.updateById(id, updatedData);
+      return res.status(200).json({
+        message: "Ticket updated successfully",
+        ticket: { ...oldData, ...updatedData },
+      });
+    } else {
+      return res.status(400).json({ message: "Status is required." });
+    }
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Failed to update ticket", error: err.message });
+  }
+};
+
 // DELETE /api/tickets/:id
 const deleteTicket = async (req, res) => {
   const { id } = req.params;
