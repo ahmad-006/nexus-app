@@ -23,14 +23,18 @@ export class Ticket {
       });
   }
 
-  static fetchAll() {
-    const db = getDb();
-    return db
-      .collection("tickets")
-      .find()
-      .toArray()
-      .then((tickets) => tickets)
-      .catch((err) => err);
+  static async fetchAll(teamId) {
+    try {
+      const db = getDb();
+
+      return await db
+        .collection("tickets")
+        .find({ teamId: new ObjectId(teamId) })
+        .toArray();
+    } catch (err) {
+      console.error("Database Fetch Error:", err);
+      throw err;
+    }
   }
 
   static DeleteById(id) {
