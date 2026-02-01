@@ -2,12 +2,13 @@ import { ObjectId } from "mongodb";
 import { getDb } from "../util/database";
 
 export class Ticket {
-  constructor(title, description, priority, userId) {
+  constructor(title, description, priority, reporterId, teamId) {
     this.title = title;
     this.description = description;
     this.status = "TODO";
     this.priority = priority;
-    this.userId = userId;
+    this.reporterId = new ObjectId(reporterId);
+    this.teamId = new ObjectId(teamId);
   }
 
   save() {
