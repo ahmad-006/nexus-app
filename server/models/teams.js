@@ -8,4 +8,17 @@ export class Team {
     this.admins = admins.map((id) => new ObjectId(id));
     this.members = members.map((id) => new ObjectId(id));
   }
+
+  async create() {
+    const db = getDb();
+    const result = await db.collection("teams").insertOne({
+      name: this.name,
+      ownerId: this.ownerId,
+      admins: this.admins,
+      members: this.members,
+      createdAt: new Date(),
+    });
+    console.log("Team created");
+    return result;
+  }
 }
