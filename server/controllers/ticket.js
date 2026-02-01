@@ -39,10 +39,11 @@ const getTicket = async (req, res) => {
 // POST /api/tickets
 const postTicket = async (req, res) => {
   const { title, description, priority } = req.body;
-  const { _id } = req.user;
+  const { _id: reporterId } = req.user;
+  const teamId = req.headers["teamid"];
 
   try {
-    const ticket = new Ticket(title, description, priority, _id);
+    const ticket = new Ticket(title, description, priority, reporterId, teamId);
     const savedTicket = await ticket.save();
 
     res.status(201).json({
