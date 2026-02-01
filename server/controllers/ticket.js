@@ -3,7 +3,8 @@ import { Ticket } from "../models/ticket";
 // GET /api/tickets
 const getTickets = async (req, res) => {
   try {
-    const tickets = await Ticket.fetchAll();
+    const teamId = req.headers["teamid"];
+    const tickets = await Ticket.fetchAll(teamId);
     res.status(200).json({
       message: "All tickets retrieved successfully",
       count: tickets.length,
@@ -19,6 +20,7 @@ const getTickets = async (req, res) => {
 // GET /api/tickets/:id
 const getTicket = async (req, res) => {
   const { id } = req.params;
+
   try {
     const ticket = await Ticket.getById(id);
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
