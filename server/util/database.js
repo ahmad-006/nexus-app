@@ -1,18 +1,11 @@
-import { MongoClient } from "mongodb";
-let _db;
+import mongoose from "mongoose";
 
-export const mongoConnect = (cb) => {
-  MongoClient.connect(process.env.MONGODB_URI)
+export const mongooseConnect = (cb) => {
+  mongoose
+    .connect(process.env.MONGODB_URI)
     .then((client) => {
-      _db = client.db("nexus");
+      console.log("DB Connected");
       cb(client);
     })
     .catch((err) => console.log(err));
-};
-
-export const getDb = () => {
-  if (_db) {
-    return _db;
-  }
-  console.log("NO DB FOUND");
 };
