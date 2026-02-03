@@ -1,58 +1,88 @@
-import { ObjectId } from "mongodb";
-import { getDb } from "../util/database";
+import mongoose, { Schema, Types } from "mongoose";
 
-export class Team {
-  constructor(name, ownerId, admins, members) {
-    this.name = name;
-    this.ownerId = new ObjectId(ownerId);
-    this.admins = admins.map((id) => new ObjectId(id));
-    this.members = members.map((id) => new ObjectId(id));
-  }
+const teamSchema = new Schema({
+  name: {
+    type: String,
+    required: true,
+  },
+  ownerId: {
+    type: Types.ObjectId,
+    ref: "User",
+  },
+  admins: [
+    {
+      type: Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  ],
+  members: [
+    {
+      type: Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  ],
+});
 
-  async create() {
-    const db = getDb();
-    const result = await db.collection("teams").insertOne({
-      name: this.name,
-      ownerId: this.ownerId,
-      admins: this.admins,
-      members: this.members,
-      createdAt: new Date(),
-    });
-    console.log("Team created");
-    return result;
-  }
+export const Team = mongoose.model("Team", teamSchema);
+// export class Team {
+//   constructor(name, ownerId, admins, members) {
+//     this.name = name;
+//     this.ownerId = new ObjectId(ownerId);
+//     this.admins = admins.map((id) => new ObjectId(id));
+//     this.members = members.map((id) => new ObjectId(id));
+//   }
 
-  static async isAdmin(teamId, userId) {
-    const db = getDb();
-    const res = await db.collection("teams").findOne({
-      _id: new ObjectId(teamId),
-      admins: new ObjectId(userId),
-    });
+//   async create() {
+//     const db = getDb();
+//     const result = await db.collection("teams").insertOne({
+//       name: this.name,
+//       ownerId: this.ownerId,
+//       admins: this.admins,
+//       members: this.members,
+//       createdAt: new Date(),
+//     });
+//     console.log("Team created");
+//     return result;
+//   }
 
-    console.log("isAdmin :", !!res);
-    return !!res;
-  }
+//   static async isAdmin(teamId, userId) {
+//     const db = getDb();
+//     const res = await db.collection("teams").findOne({
+//       _id: new ObjectId(teamId),
+//       admins: new ObjectId(userId),
+//     });
 
-  static async isMember(teamId, userId) {
-    const db = getDb();
-    const res = await db.collection("teams").findOne({
-      _id: new ObjectId(teamId),
-      members: new ObjectId(userId),
-    });
+//     console.log("isAdmin :", !!res);
+//     return !!res;
+//   }
 
-    console.log("isMember :", !!res);
-    return !!res;
-  }
+//   static async isMember(teamId, userId) {
+//     const db = getDb();
+//     const res = await db.collection("teams").findOne({
+//       _id: new ObjectId(teamId),
+//       members: new ObjectId(userId),
+//     });
 
-  static async promoteToAdmin(teamId, userId) {
-    const db = getDb();
-    const updatedTeam = await db.collection("teams").findOneAndUpdate(
-      { _id: new ObjectId(teamId), members: new ObjectId(userId) },
-      {
-        $addToSet: { admins: new ObjectId(userId) },
-      },
-    );
-    console.log("updated team");
-    return updatedTeam;
-  }
-}
+//     console.log("isMember :", !!res);
+//     return !!res;
+//   }
+
+//   static async promoteToAdmin(teamId, userId) {
+//     const db = getDb();
+//     const updatedTeam = await db.collection("teams").findOneAndUpdate(
+//       { _id: new ObjectId(teamId), members: new ObjectId(userId) },
+//       {
+//         $addToSet: { admins: new ObjectId(userId) },
+//       },
+//     );
+//     console.log("updated team");
+//     return updatedTeam;
+//   }
+
+//   static async findById(id) {
+//     const db = getDB();
+//     return await db.collection("teams").findOne({ _id: new ObjectId(id) });
+//   }
+// }
