@@ -2,14 +2,19 @@ import { Team } from "../models/teams";
 
 export const postCreateTeam = async (req, res) => {
   try {
-    const { teamName, ownerId } = req.body;
+    const { name, ownerId } = req.body;
 
-    const team = new Team(teamName, ownerId, [ownerId], [ownerId]);
-    const response = await team.create();
-    if (!response) throw new error();
+    const team = new Team({
+      name,
+      ownerId,
+      admins: [ownerId],
+      members: [ownerId],
+    });
+    await team.save();
+
     return res.status(200).json({
       message: "Team created Successfully",
-      response: { teamId: response.insertedId },
+      response: { team },
     });
   } catch (error) {
     return res.status(400).json({
