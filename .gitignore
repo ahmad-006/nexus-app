@@ -27,3 +27,6 @@ npm-debug.log*
 # If you have any local testing files or DB dumps
 /temp
 /dumps
+
+# --- Project Contenxt  ---
+history.json
