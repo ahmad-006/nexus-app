@@ -131,6 +131,38 @@ export const patchTicketStatus = async (req, res) => {
   }
 };
 
+//Patch /api/tickets/:id/assign
+export const assignToUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { assigneeId } = req.body;
+
+    const ticket = await Ticket.findById(id);
+
+    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+
+    if (!assigneeId) {
+      await Ticket.updateById(id, { assigneeId: null });
+      return res.status(200).json({ message: "Ticket unassigned" });
+    }
+
+    const team = await Team.findById(ticket.teamId);
+    const isMember = team.members.some(
+      (mId) => mId.toString() === assigneeId.toString(),
+    );
+
+    if (!isMember) {
+      throw new Error("User is not of this Team");
+    }
+    await Ticket.updateById(id, { assigneeId });
+    return res.status(200).json({ message: "Ticket Assigned successfully" });
+  } catch (error) {
+    return res
+      .status(400)
+      .json({ message: "Ticket Assigning failed", error: error.message });
+  }
+};
+
 // DELETE /api/tickets/:id
 const deleteTicket = async (req, res) => {
   const { id } = req.params;
