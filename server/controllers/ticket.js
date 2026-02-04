@@ -131,4 +131,17 @@ export const patchTicketStatus = async (req, res) => {
   }
 };
 
-export { getTicket, getTickets, postTicket, patchTicket };
+// DELETE /api/tickets/:id
+const deleteTicket = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await Ticket.findByIdAndDelete(id);
+    res.status(200).json({ message: "Ticket deleted successfully" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to delete ticket", error: err.message });
+  }
+};
+
+export { getTicket, getTickets, postTicket, patchTicket, deleteTicket };
