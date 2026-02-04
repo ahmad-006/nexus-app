@@ -4,7 +4,7 @@ const isMember = async (req, res, next) => {
   const { teamid, userid } = req.headers;
   if (!teamid || !userid)
     return res.status(400).json({ error: "teamid and userid required" });
-  const isMember = await Team.isMember(teamid, userid);
+  const isMember = await Team.findOne({ _id: teamid, members: userid });
   if (!isMember)
     return res.status(403).json({ error: "Access Denied! Not a team member" });
   next();
@@ -14,7 +14,7 @@ const isAdmin = async (req, res, next) => {
   const { teamid, userid } = req.headers;
   if (!teamid || !userid)
     return res.status(400).json({ error: "teamid and userid required" });
-  const isAdmin = await Team.isAdmin(teamid, userid);
+  const isAdmin = await Team.findOne({ _id: teamid, admins: userid });
   if (!isAdmin) {
     return res.status(403).json({ error: "Access Denied! Not an Admin" });
   }
