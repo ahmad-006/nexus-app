@@ -37,4 +37,32 @@ const getTicket = async (req, res) => {
   }
 };
 
-export { getTicket, getTickets };
+// POST /api/tickets
+const postTicket = async (req, res) => {
+  const { title, description, priority } = req.body;
+  const { _id: reporterId } = req.user;
+  const teamId = req.headers["teamid"];
+
+  try {
+    const ticket = new Ticket({
+      title,
+      description,
+      priority: priority.toLowerCase(),
+      teamId,
+      assigneeId: null,
+      reporterId,
+    });
+    const savedTicket = await ticket.save();
+
+    res.status(201).json({
+      message: "Ticket created successfully",
+      ticket: savedTicket,
+    });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to create ticket", error: err.message });
+  }
+};
+
+export { getTicket, getTickets, postTicket };
