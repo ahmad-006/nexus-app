@@ -17,6 +17,7 @@ const userSchema = new Schema({
   image: String,
   teams: [
     {
+      _id: false,
       teamId: {
         type: Types.ObjectId,
         ref: "Team",
