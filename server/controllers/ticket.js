@@ -1,7 +1,7 @@
-import { Team } from "../models/teams";
-import { Ticket } from "../models/ticket";
+import { Team } from "../models/teams.js";
+import { Ticket } from "../models/ticket.js";
 
-// GET /api/tickets
+// Fetch all tickets that belong to a specific team
 const getTickets = async (req, res) => {
   try {
     const teamId = req.headers["teamid"];
@@ -18,7 +18,7 @@ const getTickets = async (req, res) => {
   }
 };
 
-// GET /api/tickets/:id
+// Get details for a specific ticket by its ID
 const getTicket = async (req, res) => {
   const { id } = req.params;
 
@@ -37,7 +37,7 @@ const getTicket = async (req, res) => {
   }
 };
 
-// POST /api/tickets
+// Create a new ticket and set the reporter to the current user
 const postTicket = async (req, res) => {
   const { title, description, priority } = req.body;
   const { _id: reporterId } = req.user;
@@ -65,7 +65,7 @@ const postTicket = async (req, res) => {
   }
 };
 
-// PATCH /api/tickets/:id
+// Update ticket info like title, description or priority
 const patchTicket = async (req, res) => {
   const { id } = req.params;
   const { title, description, priority } = req.body;
@@ -99,14 +99,17 @@ const patchTicket = async (req, res) => {
   }
 };
 
-//Patch /api/tickets/:id/status
+// Handle status changes based on the allowed workflow transitions
 export const patchTicketStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status: newStatus } = req.body;
     const updatedData = {};
     const oldData = await Ticket.findById(id);
+
     if (!oldData) return res.status(404).json({ message: "Ticket not found" });
+
+    // Handle the first time status is being set
     if (!oldData.status) {
       if (newStatus !== "TODO")
         throw new Error("Cannot set status other than TODO for the first time");
@@ -117,6 +120,7 @@ export const patchTicketStatus = async (req, res) => {
     if (!newStatus)
       return res.status(400).json({ message: "Status is required." });
 
+    // Logic to prevent jumping states (e.g. TODO to DONE)
     const allowedTransitions = {
       notSet: ["TODO"],
       TODO: ["IN_PROGRESS"],
@@ -129,11 +133,13 @@ export const patchTicketStatus = async (req, res) => {
         message: `Invalid transition from ${oldData.status} to ${newStatus}`,
       });
     }
+
     updatedData.status = newStatus;
     const response = await Ticket.findByIdAndUpdate(id, updatedData, {
       runValidators: true,
       new: true,
     });
+
     return res.status(200).json({
       message: "Ticket updated successfully",
       ticket: response,
@@ -145,16 +151,16 @@ export const patchTicketStatus = async (req, res) => {
   }
 };
 
-//Patch /api/tickets/:id/assign
+// Assign a ticket to a user and check if they belong to the team
 export const assignToUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { assigneeId } = req.body;
 
     const ticket = await Ticket.findById(id);
-
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
+    // Unassign ticket if no assigneeId is provided
     if (!assigneeId) {
       const response = await Ticket.findByIdAndUpdate(
         id,
@@ -166,6 +172,7 @@ export const assignToUser = async (req, res) => {
         .json({ message: "Ticket unassigned", ticket: response });
     }
 
+    // Check if the user is actually a member of the team
     const team = await Team.findById(ticket.teamId);
     const isMember = team.members.some(
       (mId) => mId.toString() === assigneeId.toString(),
@@ -174,6 +181,7 @@ export const assignToUser = async (req, res) => {
     if (!isMember) {
       throw new Error("User is not of this Team");
     }
+
     const response = await Ticket.findByIdAndUpdate(
       id,
       { assigneeId },
@@ -189,7 +197,7 @@ export const assignToUser = async (req, res) => {
   }
 };
 
-// DELETE /api/tickets/:id
+// Remove a ticket from the database
 const deleteTicket = async (req, res) => {
   const { id } = req.params;
   try {
