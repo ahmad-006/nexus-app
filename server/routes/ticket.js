@@ -15,7 +15,7 @@ const Router = express.Router();
 Router.route("/").get(getTickets).post(postTicket);
 Router.route("/:id")
   .get(getTicket)
-  .patch(patchTicket)
+  .patch(isAdmin, patchTicket)
   .delete(isAdmin, deleteTicket);
 Router.route("/:id/status").patch(isMember, patchTicketStatus);
 Router.route("/:id/assign").patch(isAdmin, assignToUser);
