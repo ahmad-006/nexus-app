@@ -14,9 +14,15 @@ app.use(cors());
 
 //middleware to add user to req.user
 app.use(async (req, res, next) => {
-  const user = await User.findById("6981f1014856de3ab98aff07");
-  req.user = user;
-  next();
+  const userId = req.headers.userid || "6981f1014856de3ab98aff07";
+  try {
+    const user = await User.findById(userId);
+    req.user = user;
+    next();
+  } catch (err) {
+    console.log("Middleware User Error:", err.message);
+    next();
+  }
 });
 
 //Routes
