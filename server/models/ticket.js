@@ -22,17 +22,17 @@ const ticketSchema = new Schema({
   reporterId: {
     type: Types.ObjectId,
     ref: "User",
-    requuired: true,
+    required: true,
   },
   assigneeId: {
     type: Types.ObjectId,
     ref: "User",
-    requuired: false,
+    required: false,
   },
   teamId: {
     type: Types.ObjectId,
     ref: "Team",
-    requuired: false,
+    required: false,
   },
 });
 
