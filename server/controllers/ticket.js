@@ -156,8 +156,14 @@ export const assignToUser = async (req, res) => {
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
     if (!assigneeId) {
-      await Ticket.updateById(id, { assigneeId: null });
-      return res.status(200).json({ message: "Ticket unassigned" });
+      const response = await Ticket.findByIdAndUpdate(
+        id,
+        { assigneeId: null },
+        { new: true },
+      );
+      return res
+        .status(200)
+        .json({ message: "Ticket unassigned", ticket: response });
     }
 
     const team = await Team.findById(ticket.teamId);
