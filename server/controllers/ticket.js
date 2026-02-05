@@ -68,25 +68,29 @@ const postTicket = async (req, res) => {
 // PATCH /api/tickets/:id
 const patchTicket = async (req, res) => {
   const { id } = req.params;
-  const { title, description } = req.body;
+  const { title, description, priority } = req.body;
   const updatedData = {};
 
   try {
-    const oldData = await Ticket.getById(id);
+    const oldData = await Ticket.findById(id);
     if (!oldData) return res.status(404).json({ message: "Ticket not found" });
 
     if (title) updatedData.title = title;
     if (description) updatedData.description = description;
+    if (priority) updatedData.priority = priority;
 
     if (Object.keys(updatedData).length === 0) {
       return res.status(400).json({ message: "Nothing to update" });
     }
 
-    await Ticket.updateById(id, updatedData);
+    const response = await Ticket.findByIdAndUpdate(id, updatedData, {
+      runValidators: true,
+      new: true,
+    });
 
     res.status(200).json({
       message: "Ticket updated successfully",
-      ticket: { ...oldData, ...updatedData },
+      ticket: response,
     });
   } catch (err) {
     res
@@ -101,7 +105,7 @@ export const patchTicketStatus = async (req, res) => {
     const { id } = req.params;
     const { status: newStatus } = req.body;
     const updatedData = {};
-    const oldData = await Ticket.getById(id);
+    const oldData = await Ticket.findById(id);
     if (!oldData) return res.status(404).json({ message: "Ticket not found" });
 
     if (!newStatus)
