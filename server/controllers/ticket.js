@@ -107,11 +107,18 @@ export const patchTicketStatus = async (req, res) => {
     const updatedData = {};
     const oldData = await Ticket.findById(id);
     if (!oldData) return res.status(404).json({ message: "Ticket not found" });
+    if (!oldData.status) {
+      if (newStatus !== "TODO")
+        throw new Error("Cannot set status other than TODO for the first time");
+      else oldData.status = "notSet";
+    }
+    if (oldData.status === newStatus) throw new Error("Nothing to update...");
 
     if (!newStatus)
       return res.status(400).json({ message: "Status is required." });
 
     const allowedTransitions = {
+      notSet: ["TODO"],
       TODO: ["IN_PROGRESS"],
       IN_PROGRESS: ["TODO", "DONE"],
       DONE: ["IN_PROGRESS", "TODO"],
@@ -123,14 +130,17 @@ export const patchTicketStatus = async (req, res) => {
       });
     }
     updatedData.status = newStatus;
-    await Ticket.updateById(id, updatedData);
+    const response = await Ticket.findByIdAndUpdate(id, updatedData, {
+      runValidators: true,
+      new: true,
+    });
     return res.status(200).json({
       message: "Ticket updated successfully",
-      ticket: { ...oldData, ...updatedData },
+      ticket: response,
     });
   } catch (err) {
     return res
-      .status(500)
+      .status(400)
       .json({ message: "Failed to update ticket", error: err.message });
   }
 };
