@@ -168,8 +168,14 @@ export const assignToUser = async (req, res) => {
     if (!isMember) {
       throw new Error("User is not of this Team");
     }
-    await Ticket.updateById(id, { assigneeId });
-    return res.status(200).json({ message: "Ticket Assigned successfully" });
+    const response = await Ticket.findByIdAndUpdate(
+      id,
+      { assigneeId },
+      { new: true },
+    );
+    return res
+      .status(200)
+      .json({ message: "Ticket Assigned successfully", ticket: response });
   } catch (error) {
     return res
       .status(400)
