@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+@theme {
+  /* This replaces tailwind.config.js */
+  --color-nexus-blue: #007bff;
+  --color-nexus-dark: #1a1a1a;
+}
