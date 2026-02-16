@@ -10,14 +10,14 @@ import {
 } from "../controllers/ticket.js";
 import { isAdmin, isMember } from "../middleware/role-check.js";
 
-const Router = express.Router();
+const ticketRouter = express.Router();
 
-Router.route("/").get(getTickets).post(postTicket);
-Router.route("/:id")
+ticketRouter.route("/").get(getTickets).post(postTicket);
+ticketRouter.route("/:id")
   .get(getTicket)
   .patch(isAdmin, patchTicket)
   .delete(isAdmin, deleteTicket);
-Router.route("/:id/status").patch(isMember, patchTicketStatus);
-Router.route("/:id/assign").patch(isAdmin, assignToUser);
+ticketRouter.route("/:id/status").patch(isMember, patchTicketStatus);
+ticketRouter.route("/:id/assign").patch(isAdmin, assignToUser);
 
-export default Router;
+export { ticketRouter };
