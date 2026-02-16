@@ -7,5 +7,5 @@ export const mongooseConnect = (cb) => {
       console.log("DB Connected");
       cb(client);
     })
-    .catch((err) => console.log(err));
+    .catch((err) => console.error(err));
 };
