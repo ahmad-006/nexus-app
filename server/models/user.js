@@ -23,13 +23,15 @@ const userSchema = new Schema({
         ref: "Team",
         required: true,
       },
-      Role: {
+      role: {
         type: String,
-        enum: ["Admin", "Member"],
-        Default: "Member",
+        enum: ["admin", "member"],
+        Default: "member",
       },
     },
   ],
+  resetToken: String,
+  resetTokenExpiration: Date,
 });
 
 export const User = mongoose.model("User", userSchema);
