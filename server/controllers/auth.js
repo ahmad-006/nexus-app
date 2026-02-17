@@ -73,8 +73,8 @@ export const postForgetPassword = async (req, res) => {
 
     user.resetToken = crypto.createHash("sha256").update(token).digest("hex");
     user.resetTokenExpiration = Date.now() + 10 * 60 * 1000;
-        await user.save();
-        await sendEmail({
+    await user.save();
+    await sendEmail({
       name: user.name.split(" ")[0],
       email: user.email,
       token,
