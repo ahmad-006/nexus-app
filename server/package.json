@@ -11,6 +11,7 @@
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "express-validator": "^7.3.1",
     "mongodb": "^7.0.0",
     "mongoose": "^9.1.5",
     "nodemailer": "^8.0.1"
