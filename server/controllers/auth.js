@@ -38,19 +38,6 @@ export const postLogin = async (req, res) => {
 export const postSignUp = async (req, res) => {
   const { name, email, password, confirmPassword } = req.body;
   try {
-    if (!name || !email || !password)
-      return res
-        .status(400)
-        .json({ message: "SignUp failed", error: "Invalid credentials" });
-
-    const user = await User.findOne({ email });
-    if (user)
-      return res
-        .status(409)
-        .json({ message: "SignUp failed", error: "User already exists" });
-
-    if (password !== confirmPassword) throw new Error("Passwords do not match");
-
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
       name,
@@ -86,9 +73,8 @@ export const postForgetPassword = async (req, res) => {
 
     user.resetToken = crypto.createHash("sha256").update(token).digest("hex");
     user.resetTokenExpiration = Date.now() + 10 * 60 * 1000;
-    await user.save();
-
-    await sendEmail({
+        await user.save();
+        await sendEmail({
       name: user.name.split(" ")[0],
       email: user.email,
       token,
@@ -113,6 +99,7 @@ export const postResetPassword = async (req, res) => {
       .createHash("sha256")
       .update(token.trim())
       .digest("hex");
+
     const user = await User.findOne({
       resetToken: hashedToken,
       resetTokenExpiration: { $gt: new Date() },
