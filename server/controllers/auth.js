@@ -96,12 +96,12 @@ export const postResetPassword = async (req, res) => {
     const { token } = req.params;
 
     const hashedToken = crypto
-      .createHash("sha256")
-      .update(token.trim())
-      .digest("hex");
-
-    const user = await User.findOne({
-      resetToken: hashedToken,
+            .createHash("sha256")
+            .update(token.trim())
+            .digest("hex");
+      
+          const user = await User.findOne({
+            resetToken: hashedToken,
       resetTokenExpiration: { $gt: new Date() },
     });
     if (!user) return res.status(400).json({ message: "no user found" });
