@@ -11,6 +11,8 @@ import { userRouter } from "./routes/user.js";
 import { User } from "./models/user.js";
 import { authRouter } from "./routes/auth.js";
 import { globalErrorHandler } from "./controllers/errorController.js";
+import { catchAsync } from "./util/catchAsync.js";
+import { AppError } from "./util/appError.js";
 const app = express();
 
 //req.body parser
@@ -18,17 +20,15 @@ app.use(express.json());
 app.use(cors());
 
 //middleware to add user to req.user
-app.use(async (req, res, next) => {
-  const userId = req.headers.userid || "69932c6251ca266d83a0234a";
-  try {
+app.use(
+  catchAsync(async (req, res, next) => {
+    const userId = req.headers.userid || "69932c6251ca266d83a0234a";
     const user = await User.findById(userId);
+    if (!user) return next(new AppError("User not found", 404));
     req.user = user;
     next();
-  } catch (err) {
-    console.log("Middleware User Error:", err.message);
-    next();
-  }
-});
+  }),
+);
 
 //Routes
 app.use("/api/teams", teamsRouter);
