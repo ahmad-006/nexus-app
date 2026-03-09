@@ -1,24 +1,26 @@
-import { Team } from "../models/teams";
+import { Team } from "../models/teams.js";
+import { catchAsync } from "../util/catchAsync.js";
+import { AppError } from "../util/appError.js";
 
-const isMember = async (req, res, next) => {
+const isMember = catchAsync(async (req, res, next) => {
   const { teamid, userid } = req.headers;
   if (!teamid || !userid)
-    return res.status(400).json({ error: "teamid and userid required" });
+    return next(new AppError("teamid and userid required", 400));
   const isMember = await Team.findOne({ _id: teamid, members: userid });
   if (!isMember)
-    return res.status(403).json({ error: "Access Denied! Not a team member" });
+    return next(new AppError("Access Denied! Not a team member", 403));
   next();
-};
+});
 
-const isAdmin = async (req, res, next) => {
+const isAdmin = catchAsync(async (req, res, next) => {
   const { teamid, userid } = req.headers;
   if (!teamid || !userid)
-    return res.status(400).json({ error: "teamid and userid required" });
+    return next(new AppError("teamid and userid required", 400));
   const isAdmin = await Team.findOne({ _id: teamid, admins: userid });
   if (!isAdmin) {
-    return res.status(403).json({ error: "Access Denied! Not an Admin" });
+    return next(new AppError("Access Denied! Not an Admin", 403));
   }
   next();
-};
+});
 
 export { isAdmin, isMember };
