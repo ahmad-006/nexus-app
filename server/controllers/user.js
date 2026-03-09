@@ -1,28 +1,6 @@
 import { Team } from "../models/teams.js";
 import { User } from "../models/user.js";
 
-// Handle user signup and initial data creation
-export const postUser = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-      throw new Error("A user must have a name, email and password");
-    }
-
-    const user = await new User({ name, email, password });
-    await user.save();
-
-    return res
-      .status(201)
-      .json({ message: "user created successfully", response: { user } });
-  } catch (error) {
-    return res.status(400).json({
-      message: "user creation failed",
-      error: error.message,
-    });
-  }
-};
-
 // Search for a user by email and return their profile without the password
 export const getUser = async (req, res) => {
   try {
@@ -64,3 +42,23 @@ export const getTeams = async (req, res) => {
     });
   }
 };
+
+export const getUserById = async (req, res) => {
+  const { userId } = req.params;
+  try {
+    if (!userId) throw new Error("userId is required");
+    const user = await User.findById(userId);
+    if (!user) throw new Error("User not found");
+
+    return res.status(200).json({ message: "User found", user });
+  } catch (error) {
+    return res
+      .status(400)
+      .json({ message: "Failed to fetch user", error: error.message });
+  }
+};
+
+// Going to implement when JWT is implemented
+export const patchUserProfile = async (req, res) => {};
+export const deleteUser = async (req, res) => {};
+export const getTickets = async (req, res) => {};
