@@ -5,37 +5,37 @@ import {
   postResetPassword,
   postSignUp,
 } from "../controllers/auth.js";
-import { userValidation } from "../middleware/validator.js";
+import { authValidation } from "../middleware/validator.js";
 import { validate } from "../middleware/validate.js";
 
 const authRouter = express.Router();
 
 authRouter.post(
   "/login",
-  [userValidation.email, userValidation.password],
+  [authValidation.email, authValidation.password],
   validate,
   postLogin,
 );
 authRouter.post(
   "/signup",
   [
-    userValidation.email,
-    userValidation.name,
-    userValidation.password,
-    userValidation.confirmPassword,
+    authValidation.email,
+    authValidation.name,
+    authValidation.password,
+    authValidation.confirmPassword,
   ],
   validate,
   postSignUp,
 );
 authRouter.post(
   "/forget-password",
-  [userValidation.email],
+  [authValidation.email],
   validate,
   postForgetPassword,
 );
 authRouter.post(
   "/reset-password/:token",
-  [userValidation.password, userValidation.confirmPassword],
+  [authValidation.password, authValidation.confirmPassword],
   validate,
   postResetPassword,
 );
