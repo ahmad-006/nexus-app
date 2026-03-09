@@ -14,7 +14,7 @@ teamsRouter
   .route("/")
   .post(
     isAdmin,
-    [teamValidation.name, teamValidation.owenerId],
+    [teamValidation.name, teamValidation.ownerId],
     validate,
     postCreateTeam,
   );
