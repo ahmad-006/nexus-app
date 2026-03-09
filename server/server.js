@@ -10,6 +10,7 @@ import { teamsRouter } from "./routes/team.js";
 import { userRouter } from "./routes/user.js";
 import { User } from "./models/user.js";
 import { authRouter } from "./routes/auth.js";
+import { globalErrorHandler } from "./controllers/errorController.js";
 const app = express();
 
 //req.body parser
@@ -40,6 +41,10 @@ app.use("/", (req, res, next) => {
     message: "hello from server",
   });
 });
+
+// Global Error Handler
+app.use(globalErrorHandler);
+
 mongooseConnect(() => {
   app.listen(8000);
 });
