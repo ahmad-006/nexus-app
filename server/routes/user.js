@@ -1,10 +1,18 @@
 import express from "express";
-import { postUser, getUser, getTeams } from "../controllers/user.js";
+import {
+  getUser,
+  getTeams,
+  patchUserProfile,
+  deleteUser,
+  getTickets,
+  getUser,
+} from "../controllers/user.js";
 
 const userRouter = express.Router();
 
-userRouter.post("/", postUser);
-userRouter.get("/", getUser);
-userRouter.get("/teams", getTeams);
+userRouter.route("/me").get(getUser).patch(patchUserProfile).delete(deleteUser);
+userRouter.get("/me/teams", getTeams);
+userRouter.get("/me/ticket", getTickets);
+userRouter.get("/:userId", getUser);
 
 export { userRouter };
