@@ -1,120 +1,104 @@
 import { Team } from "../models/teams.js";
 import { User } from "../models/user.js";
+import { catchAsync } from "../util/catchAsync.js";
+import { AppError } from "../util/appError.js";
 
 // Create a new team and make the owner an admin and member by default
-export const postCreateTeam = async (req, res) => {
-  try {
-    const { name, ownerId } = req.body;
+export const postCreateTeam = catchAsync(async (req, res, next) => {
+  const { name, ownerId } = req.body;
 
-    const team = new Team({
-      name,
-      ownerId,
-      admins: [ownerId],
-      members: [ownerId],
-    });
-    await team.save();
+  const team = new Team({
+    name,
+    ownerId,
+    admins: [ownerId],
+    members: [ownerId],
+  });
+  await team.save();
 
-    return res.status(200).json({
-      message: "Team created Successfully",
-      response: { team },
-    });
-  } catch (error) {
-    return res.status(400).json({
-      message: "Failed to create the team",
-      error: error.message,
-    });
-  }
-};
+  return res.status(200).json({
+    message: "Team created Successfully",
+    response: { team },
+  });
+});
 
 // Promote a member to admin and sync the role in both Team and User models
-export const patchPromoteToAdmin = async (req, res) => {
-  try {
-    const { id: teamId } = req.params;
-    const { userId } = req.body;
+export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
+  const { id: teamId } = req.params;
+  const { userId } = req.body;
 
-    if (!userId || !teamId) throw new Error("userId and teamId required");
+  if (!userId || !teamId)
+    return next(new AppError("userId and teamId required", 400));
 
-    const team = await Team.findById(teamId);
-    if (!team) throw new Error("Team Not Found");
+  const team = await Team.findById(teamId);
+  if (!team) return next(new AppError("Team Not Found", 404));
 
-    // Check if user is actually in the team before promoting
-    const isMember = team.members.some(
-      (id) => id.toString() === userId.toString(),
-    );
-    if (!isMember) throw new Error("User is not of this team");
+  // Check if user is actually in the team before promoting
+  const isMember = team.members.some(
+    (id) => id.toString() === userId.toString(),
+  );
+  if (!isMember) return next(new AppError("User is not of this team", 400));
 
-    const isAlreadyAdmin = team.admins.some(
-      (id) => id.toString() === userId.toString(),
-    );
-    if (isAlreadyAdmin) throw new Error("User is already admin");
+  const isAlreadyAdmin = team.admins.some(
+    (id) => id.toString() === userId.toString(),
+  );
+  if (isAlreadyAdmin) return next(new AppError("User is already admin", 400));
 
-    // Add user to admin list in the Team model
-    const response = await Team.findByIdAndUpdate(
-      teamId,
-      {
-        $addToSet: { admins: userId },
-      },
-      { new: true },
-    );
+  // Add user to admin list in the Team model
+  const response = await Team.findByIdAndUpdate(
+    teamId,
+    {
+      $addToSet: { admins: userId },
+    },
+    { new: true },
+  );
 
-    // Update the user's role for this specific team in the User model
-    await User.updateOne(
-      { _id: userId, "teams.teamId": teamId },
-      { $set: { "teams.$.role": "admin" } },
-    );
+  // Update the user's role for this specific team in the User model
+  await User.updateOne(
+    { _id: userId, "teams.teamId": teamId },
+    { $set: { "teams.$.role": "admin" } },
+  );
 
-    return res.status(200).json({
-      message: "Updated role successfully ",
-      Team: response,
-    });
-  } catch (error) {
-    res
-      .status(400)
-      .json({ message: "Failed to update role", error: error.message });
-  }
-};
+  return res.status(200).json({
+    message: "Updated role successfully ",
+    Team: response,
+  });
+});
 
 // Add a new user to the team and update the user's teams list
-export const postAddMember = async (req, res) => {
-  try {
-    const { id: teamId } = req.params;
-    const { userId } = req.body;
+export const postAddMember = catchAsync(async (req, res, next) => {
+  const { id: teamId } = req.params;
+  const { userId } = req.body;
 
-    if (!userId || !teamId) throw new Error("User and team ID is required");
+  if (!userId || !teamId)
+    return next(new AppError("User and team ID is required", 400));
 
-    const user = await User.findById(userId);
-    if (!user) throw new Error("User not found");
+  const user = await User.findById(userId);
+  if (!user) return next(new AppError("User not found", 404));
 
-    const team = await Team.findById(teamId);
-    if (!team) throw new Error("Team not found");
+  const team = await Team.findById(teamId);
+  if (!team) return next(new AppError("Team not found", 404));
 
-    const isAlreadyMember = team.members.some(
-      (id) => id.toString() === userId.toString(),
-    );
-    if (isAlreadyMember)
-      throw new Error("User is already a member of this team");
+  const isAlreadyMember = team.members.some(
+    (id) => id.toString() === userId.toString(),
+  );
+  if (isAlreadyMember)
+    return next(new AppError("User is already a member of this team", 400));
 
-    // Push the user to the team's member array
-    const response = await Team.findByIdAndUpdate(
-      teamId,
-      {
-        $addToSet: { members: userId },
-      },
-      { new: true },
-    );
+  // Push the user to the team's member array
+  const response = await Team.findByIdAndUpdate(
+    teamId,
+    {
+      $addToSet: { members: userId },
+    },
+    { new: true },
+  );
 
-    // Update the user's document to include this team
-    user.teams.push({ teamId, role: "member" });
-    await user.save();
+  // Update the user's document to include this team
+  user.teams.push({ teamId, role: "member" });
+  await user.save();
 
-    return res.status(200).json({
-      message: "Member added successfully",
-      response,
-    });
-  } catch (error) {
-    return res.status(400).json({
-      message: "failed adding the user to team",
-      error: error.message,
-    });
-  }
-};
+  return res.status(200).json({
+    message: "Member added successfully",
+    response,
+  });
+});
