@@ -5,4 +5,6 @@ export const validate = (req, res, next) => {
   if (!error.isEmpty()) {
     return res.status(422).json({ errors: error.array() });
   }
+
+  next();
 };
