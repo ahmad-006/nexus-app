@@ -34,7 +34,7 @@ const ticketSchema = new Schema({
     ref: "Team",
     required: false,
   },
-});
+}, { timestamps: true });
 
 export const Ticket = mongoose.model("Ticket", ticketSchema);
 
