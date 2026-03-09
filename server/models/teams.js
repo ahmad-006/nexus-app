@@ -23,7 +23,7 @@ const teamSchema = new Schema({
       required: true,
     },
   ],
-});
+}, { timestamps: true });
 
 export const Team = mongoose.model("Team", teamSchema);
 // export class Team {
