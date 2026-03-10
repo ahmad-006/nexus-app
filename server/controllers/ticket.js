@@ -30,16 +30,18 @@ const getTicket = catchAsync(async (req, res, next) => {
 // Create a new ticket and set the reporter to the current user
 const postTicket = catchAsync(async (req, res, next) => {
   const { title, description, priority } = req.body;
-  const { _id: reporterId } = req.user;
-  const teamId = req.headers["teamid"];
+  const { teamid, userid } = req.headers;
 
+  if (!teamid || !userid) {
+    return next(new AppError("teamid and userid headers are required", 400));
+  }
   const ticket = new Ticket({
     title,
     description,
-    priority: priority.toLowerCase(),
-    teamId,
+    priority: priority.toUpperCase(),
+    teamId: teamid,
     assigneeId: null,
-    reporterId,
+    reporterId: userid,
   });
   const savedTicket = await ticket.save();
 
@@ -90,7 +92,10 @@ export const patchTicketStatus = catchAsync(async (req, res, next) => {
   if (!oldData.status) {
     if (newStatus !== "TODO")
       return next(
-        new AppError("Cannot set status other than TODO for the first time", 400),
+        new AppError(
+          "Cannot set status other than TODO for the first time",
+          400,
+        ),
       );
     else oldData.status = "notSet";
   }
