@@ -1,23 +1,23 @@
 import { body, check } from "express-validator";
 import { User } from "../models/user.js";
+import { AppError } from "../util/appError.js";
 
 export const authValidation = {
   email: body("email")
+    .notEmpty()
     .trim()
     .isLength({ min: 5 })
     .withMessage("An email must have minimum of 5 characters")
     .normalizeEmail()
     .isEmail()
-    .withMessage("Please Enter a valid email")
-    .custom(async (value) => {
-      const user = await User.exists({ email: value });
-      if (!user) throw new Error("User not found");
-    }),
+    .withMessage("Please Enter a valid email"),
   name: body("name")
+    .notEmpty()
     .trim()
     .isLength({ min: 5 })
     .withMessage("A name must have minimum of 5 characters"),
   password: body("password")
+    .notEmpty()
     .trim()
     .isStrongPassword()
     .withMessage(
@@ -28,6 +28,8 @@ export const authValidation = {
     return true;
   }),
   token: check("token")
+    .notEmpty()
+    .trim()
     .isHexadecimal()
     .isLength({ min: 64, max: 64 })
     .withMessage("invalid Token"),
@@ -44,41 +46,53 @@ const ticketValidationBase = {
 
 export const ticketValidation = {
   title: body("title")
+    .notEmpty()
+    .trim()
     .isLength({ min: 5, max: 100 })
     .withMessage("Title must be between 5 and 100 characters"),
   description: body("description")
+    .notEmpty()
+    .trim()
     .isLength({ min: 10 })
     .withMessage("Title must be atleast 10 characters long"),
   priority: body("priority")
+    .toUpperCase()
+    .notEmpty()
     .isIn(["LOW", "MEDIUM", "HIGH"])
     .withMessage("Invalid Priority"),
   reporterId: check("reporterId").isMongoId().withMessage("Invalid Reporter"),
-  teamId: check("teamId").isMongoId().withMessage("Invalid Team"),
+  teamId: check("teamid").isMongoId().withMessage("Invalid Team"),
   get optionalStatus() {
     return ticketValidationBase.status().optional({ values: "falsy" });
   },
   get createStatus() {
     return ticketValidationBase.status().notEmpty();
   },
-  optionalAssignee() {
+  get optionalAssignee() {
     return ticketValidationBase.assigneeId().optional({ values: "falsy" });
   },
-  createAssignee() {
+  get createAssignee() {
     return ticketValidationBase.assigneeId().notEmpty();
   },
-};
+  };
+
 
 export const teamValidation = {
   name: body("name")
+    .notEmpty()
     .trim()
     .isLength({ min: 5 })
     .withMessage("A name must have minimum of 5 characters"),
-  ownerId: check("ownerId").isMongoId().withMessage("Invalid Owner"),
-  userId: check("userId").isMongoId().withMessage("Invalid User"),
-  teamId: check("id").isMongoId().withMessage("Invalid Team"),
+  ownerId: check("ownerId").notEmpty().isMongoId().withMessage("Invalid Owner"),
+  userId: check("userId").notEmpty().isMongoId().withMessage("Invalid User"),
+  teamId: check("id").notEmpty().isMongoId().withMessage("Invalid Team"),
 };
 
 export const userValidation = {
-  name: check("name").trim().isLength({ min: 5 }).withMessage("Invalid Name"),
-  userId: check("userId").isMongoId().withMessage("Invalid User"),
+  name: check("name")
+    .notEmpty()
+    .trim()
+    .isLength({ min: 5 })
+    .withMessage("Invalid Name"),
+  userId: check("userId").notEmpty().isMongoId().withMessage("Invalid User"),
 };
