@@ -20,15 +20,15 @@ app.use(express.json());
 app.use(cors());
 
 //middleware to add user to req.user
-app.use(
-  catchAsync(async (req, res, next) => {
-    const userId = req.headers.userid || "69932c6251ca266d83a0234a";
-    const user = await User.findById(userId);
-    if (!user) return next(new AppError("User not found", 404));
-    req.user = user;
-    next();
-  }),
-);
+// app.use(
+//   catchAsync(async (req, res, next) => {
+//     const userId = req.headers.userid || "69932c6251ca266d83a0234a";
+//     const user = await User.findById(userId);
+//     if (!user) return next(new AppError("User not found", 404));
+//     req.user = user;
+//     next();
+//   }),
+// );
 
 //Routes
 app.use("/api/teams", teamsRouter);

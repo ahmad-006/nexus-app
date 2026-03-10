@@ -28,6 +28,8 @@ export const postLogin = catchAsync(async (req, res, next) => {
 
 export const postSignUp = catchAsync(async (req, res, next) => {
   const { name, email, password } = req.body;
+  const existingUser = await User.findOne({ email });
+  if (existingUser) return next(new AppError("User already exists", 400));
 
   const hashedPassword = await bcrypt.hash(password, 10);
   const newUser = new User({

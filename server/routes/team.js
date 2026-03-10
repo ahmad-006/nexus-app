@@ -13,7 +13,6 @@ const teamsRouter = express.Router();
 teamsRouter
   .route("/")
   .post(
-    isAdmin,
     [teamValidation.name, teamValidation.ownerId],
     validate,
     postCreateTeam,
