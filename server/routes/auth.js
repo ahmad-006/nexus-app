@@ -10,12 +10,7 @@ import { validate } from "../middleware/validate.js";
 
 const authRouter = express.Router();
 
-authRouter.post(
-  "/login",
-  [authValidation.email, authValidation.password],
-  validate,
-  postLogin,
-);
+authRouter.post("/login", [authValidation.email], validate, postLogin);
 authRouter.post(
   "/signup",
   [

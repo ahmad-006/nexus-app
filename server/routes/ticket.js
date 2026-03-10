@@ -22,6 +22,10 @@ const ticketUpdateRules = [
   ticketValidation.optionalStatus,
 ];
 
+/*
+ROUTES
+*/
+
 ticketRouter
   .route("/")
   .get(getTickets)
