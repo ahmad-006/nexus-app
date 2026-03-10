@@ -36,10 +36,12 @@ app.use("/api/tickets", ticketRouter);
 app.use("/api/users", userRouter);
 app.use("/api/auth", authRouter);
 
-app.use("/", (req, res, next) => {
-  res.json({
-    message: "hello from server",
-  });
+app.all(/.*/, (req, res, next) => {
+  const error = new AppError(
+    `Can't find ${req.originalUrl} on this server`,
+    404,
+  );
+  next(error);
 });
 
 // Global Error Handler
