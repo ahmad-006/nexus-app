@@ -8,7 +8,7 @@ import {
   getTickets,
   uploadImage,
   postImage,
-} from "../controllers/user.js";
+} from "../controllers/userController.js";
 import { validate } from "../middleware/validate.js";
 import { userValidation } from "../middleware/validator.js";
 
