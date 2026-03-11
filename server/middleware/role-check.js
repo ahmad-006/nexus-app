@@ -1,4 +1,4 @@
-import { Team } from "../models/teams.js";
+import { Team } from "../models/Team.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 

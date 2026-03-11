@@ -1,5 +1,5 @@
-import { Team } from "../models/teams.js";
-import { User } from "../models/user.js";
+import { Team } from "../models/Team.js";
+import { User } from "../models/User.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 

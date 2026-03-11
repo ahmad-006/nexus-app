@@ -5,11 +5,11 @@ import cors from "cors";
 import { mongooseConnect } from "./util/database";
 
 //routes
-import { ticketRouter } from "./routes/ticket.js";
-import { teamsRouter } from "./routes/team.js";
-import { userRouter } from "./routes/user.js";
-import { User } from "./models/user.js";
-import { authRouter } from "./routes/auth.js";
+import { ticketRouter } from "./routes/ticketRoutes.js";
+import { teamsRouter } from "./routes/teamRoutes.js";
+import { userRouter } from "./routes/userRoutes.js";
+import { User } from "./models/User.js";
+import { authRouter } from "./routes/authRoutes.js";
 import { globalErrorHandler } from "./controllers/errorController.js";
 import { catchAsync } from "./util/catchAsync.js";
 import { AppError } from "./util/appError.js";

@@ -1,5 +1,5 @@
 import { body, check } from "express-validator";
-import { User } from "../models/user.js";
+import { User } from "../models/User.js";
 import { AppError } from "../util/appError.js";
 
 export const authValidation = {
@@ -74,8 +74,7 @@ export const ticketValidation = {
   get createAssignee() {
     return ticketValidationBase.assigneeId().notEmpty();
   },
-  };
-
+};
 
 export const teamValidation = {
   name: body("name")

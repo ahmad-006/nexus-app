@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-import { User } from "../models/user.js";
+import { User } from "../models/User.js";
 import bcrypt from "bcryptjs";
 import { sendEmail } from "../util/nodemailer.js";
 import { catchAsync } from "../util/catchAsync.js";
