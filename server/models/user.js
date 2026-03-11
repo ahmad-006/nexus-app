@@ -1,37 +1,41 @@
 import mongoose, { Schema, Types } from "mongoose";
 
-const userSchema = new Schema({
-  name: {
-    type: String,
-    required: true,
-  },
-  email: {
-    type: String,
-    required: true,
-  },
-  password: {
-    type: String,
-    required: true,
-    min: [8, "A password must be minimum of 8 character"],
-  },
-  image: String,
-  teams: [
-    {
-      _id: false,
-      teamId: {
-        type: Types.ObjectId,
-        ref: "Team",
-        required: true,
-      },
-      role: {
-        type: String,
-        enum: ["admin", "member"],
-        default: "member",
-      },
+const userSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
     },
-  ],
-  resetToken: String,
-  resetTokenExpiration: Date,
-}, { timestamps: true });
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    password: {
+      type: String,
+      required: true,
+      min: [8, "A password must be minimum of 8 character"],
+    },
+    image: String,
+    teams: [
+      {
+        _id: false,
+        teamId: {
+          type: Types.ObjectId,
+          ref: "Team",
+          required: true,
+        },
+        role: {
+          type: String,
+          enum: ["admin", "member"],
+          default: "member",
+        },
+      },
+    ],
+    resetToken: String,
+    resetTokenExpiration: Date,
+  },
+  { timestamps: true },
+);
 
 export const User = mongoose.model("User", userSchema);
