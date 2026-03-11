@@ -3,21 +3,7 @@ import { User } from "../models/User.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 import { Ticket } from "../models/Ticket.js";
-import { storage as cloudinaryStorage } from "../util/cloudinary.js";
-import multer from "multer";
-
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image")) {
-    cb(null, true);
-  } else {
-    cb(new AppError("Not an image! Please upload only images", 400), false);
-  }
-};
-
-const upload = multer({
-  storage: cloudinaryStorage,
-  fileFilter: multerFilter,
-});
+import { imagekit, upload } from "../util/imagekit.js";
 
 export const uploadImage = upload.single("image");
 
@@ -85,10 +71,16 @@ export const postImage = catchAsync(async (req, res, next) => {
   const { userid } = req.headers;
   if (!req.file) return next(new AppError("No file uploaded", 400));
 
+  const uploadResponse = await imagekit.upload({
+    file: req.file.buffer,
+    fileName: `user-${userid}-${Date.now()}`,
+    folder: "/nexus-users",
+  });
+
   const user = await User.findByIdAndUpdate(
     userid,
     {
-      image: req.file.path,
+      image: uploadResponse.url,
     },
     { new: true },
   );
