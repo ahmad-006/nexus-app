@@ -3,7 +3,7 @@ import {
   patchPromoteToAdmin,
   postAddMember,
   postCreateTeam,
-} from "../controllers/team.js";
+} from "../controllers/teamController.js";
 import { isAdmin } from "../middleware/role-check.js";
 import { teamValidation } from "../middleware/validator.js";
 import { validate } from "../middleware/validate.js";
