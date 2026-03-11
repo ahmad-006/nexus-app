@@ -7,7 +7,7 @@ import {
   getTicket,
   patchTicketStatus,
   assignToUser,
-} from "../controllers/ticket.js";
+} from "../controllers/ticketController.js";
 import { isAdmin, isMember } from "../middleware/role-check.js";
 import { ticketValidation } from "../middleware/validator.js";
 import { validate } from "../middleware/validate.js";
