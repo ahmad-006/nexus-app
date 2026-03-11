@@ -9,28 +9,22 @@ import { mongooseConnect } from "./util/database";
 import { ticketRouter } from "./routes/ticketRoutes.js";
 import { teamsRouter } from "./routes/teamRoutes.js";
 import { userRouter } from "./routes/userRoutes.js";
-import { User } from "./models/User.js";
 import { authRouter } from "./routes/authRoutes.js";
 import { globalErrorHandler } from "./controllers/errorController.js";
-import { catchAsync } from "./util/catchAsync.js";
 import { AppError } from "./util/appError.js";
+//handling uncaught exceptions......
+process.on("uncaughtException", (err) => {
+  console.log("UNCAUGHT EXCEPTION! 💥 Shutting down...");
+  console.log(err.name, ": ", err.message);
+  process.exit(1);
+});
+
 const app = express();
 
 //req.body parser
 app.use(express.json());
 app.use(cors());
 if (process.env.NODE_ENV === "development") app.use(morgan("dev"));
-
-//middleware to add user to req.user
-// app.use(
-//   catchAsync(async (req, res, next) => {
-//     const userId = req.headers.userid || "69932c6251ca266d83a0234a";
-//     const user = await User.findById(userId);
-//     if (!user) return next(new AppError("User not found", 404));
-//     req.user = user;
-//     next();
-//   }),
-// );
 
 //Routes
 app.use("/api/teams", teamsRouter);
@@ -48,7 +42,15 @@ app.all(/.*/, (req, res, next) => {
 
 // Global Error Handler
 app.use(globalErrorHandler);
-
+let server;
 mongooseConnect(() => {
-  app.listen(8000);
+  server = app.listen(8000);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.log("UNHANDLED REJECTION! 💥 Shutting down...");
+  console.log(err.name, ": ", err.message);
+  server.close(() => {
+    process.exit(1);
+  });
 });
