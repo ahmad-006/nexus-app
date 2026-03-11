@@ -1,29 +1,32 @@
 import mongoose, { Schema, Types } from "mongoose";
 
-const teamSchema = new Schema({
-  name: {
-    type: String,
-    required: true,
-  },
-  ownerId: {
-    type: Types.ObjectId,
-    ref: "User",
-  },
-  admins: [
-    {
-      type: Types.ObjectId,
-      ref: "User",
+const teamSchema = new Schema(
+  {
+    name: {
+      type: String,
       required: true,
     },
-  ],
-  members: [
-    {
+    ownerId: {
       type: Types.ObjectId,
       ref: "User",
-      required: true,
     },
-  ],
-}, { timestamps: true });
+    admins: [
+      {
+        type: Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+    ],
+    members: [
+      {
+        type: Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+    ],
+  },
+  { timestamps: true },
+);
 
 export const Team = mongoose.model("Team", teamSchema);
 // export class Team {
