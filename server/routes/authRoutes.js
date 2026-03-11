@@ -4,7 +4,7 @@ import {
   postLogin,
   postResetPassword,
   postSignUp,
-} from "../controllers/auth.js";
+} from "../controllers/authController.js";
 import { authValidation } from "../middleware/validator.js";
 import { validate } from "../middleware/validate.js";
 
