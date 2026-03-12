@@ -4,6 +4,8 @@ import {
   postLogin,
   postResetPassword,
   postSignUp,
+  postUpdatePassword,
+  protect,
 } from "../controllers/authController.js";
 import { authValidation } from "../middleware/validator.js";
 import { validate } from "../middleware/validate.js";
@@ -28,11 +30,22 @@ authRouter.post(
   validate,
   postForgetPassword,
 );
-authRouter.post(
+authRouter.patch(
   "/reset-password/:token",
   [authValidation.password, authValidation.confirmPassword],
   validate,
   postResetPassword,
+);
+authRouter.patch(
+  "/update-password",
+  protect,
+  [
+    authValidation.oldPassword,
+    authValidation.newPassword,
+    authValidation.confirmPassword,
+  ],
+  validate,
+  postUpdatePassword,
 );
 
 export { authRouter };
