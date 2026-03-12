@@ -11,6 +11,7 @@ import {
 import { isAdmin, isMember } from "../middleware/role-check.js";
 import { ticketValidation } from "../middleware/validator.js";
 import { validate } from "../middleware/validate.js";
+import { protect } from "../controllers/authController.js";
 
 const ticketRouter = express.Router();
 const ticketUpdateRules = [
@@ -28,7 +29,7 @@ ROUTES
 
 ticketRouter
   .route("/")
-  .get(getTickets)
+  .get(protect, getTickets)
   .post(ticketUpdateRules, validate, postTicket);
 ticketRouter
   .route("/:id")
