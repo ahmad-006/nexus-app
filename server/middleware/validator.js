@@ -23,8 +23,23 @@ export const authValidation = {
     .withMessage(
       "Password must be at least 8 characters long and include an uppercase letter, a number, and a special character.",
     ),
+  oldPassword: body("oldPassword")
+    .notEmpty()
+    .trim()
+    .isStrongPassword()
+    .withMessage(
+      "Password must be at least 8 characters long and include an uppercase letter, a number, and a special character.",
+    ),
+  newPassword: body("newPassword")
+    .notEmpty()
+    .trim()
+    .isStrongPassword()
+    .withMessage(
+      "Password must be at least 8 characters long and include an uppercase letter, a number, and a special character.",
+    ),
   confirmPassword: body("confirmPassword").custom((value, { req }) => {
-    if (value !== req.body.password) throw new Error("Passwords do not match");
+    if (value !== (req.body.newPassword || req.body.password))
+      throw new Error("Passwords do not match");
     return true;
   }),
   token: check("token")
