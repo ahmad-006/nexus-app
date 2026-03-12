@@ -43,6 +43,8 @@ app.all(/.*/, (req, res, next) => {
 // Global Error Handler
 app.use(globalErrorHandler);
 let server;
+
+//connecting DB and then starting the server
 mongooseConnect(() => {
   server = app.listen(8000);
 });

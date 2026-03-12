@@ -69,6 +69,8 @@ export const getTickets = async (req, res) => {
 
 export const postImage = catchAsync(async (req, res, next) => {
   const { userid } = req.headers;
+  if (!userid) return next(new AppError("userid is required", 400));
+
   if (!req.file) return next(new AppError("No file uploaded", 400));
 
   const uploadResponse = await imagekit.upload({
@@ -85,5 +87,7 @@ export const postImage = catchAsync(async (req, res, next) => {
     { new: true },
   );
 
-  return res.status(200).json({ status: "success", user });
+  return res
+    .status(200)
+    .json({ status: "success", imageUrl: uploadResponse.url });
 });
