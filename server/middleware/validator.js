@@ -97,9 +97,8 @@ export const teamValidation = {
     .trim()
     .isLength({ min: 5 })
     .withMessage("A name must have minimum of 5 characters"),
-  ownerId: check("ownerId").notEmpty().isMongoId().withMessage("Invalid Owner"),
   userId: check("userId").notEmpty().isMongoId().withMessage("Invalid User"),
-  teamId: check("id").notEmpty().isMongoId().withMessage("Invalid Team"),
+  teamId: check("teamId").notEmpty().isMongoId().withMessage("Invalid Team"),
 };
 
 export const userValidation = {
