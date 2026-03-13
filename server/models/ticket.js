@@ -13,11 +13,13 @@ const ticketSchema = new Schema(
     status: {
       type: String,
       enum: ["TODO", "IN_PROGRESS", "DONE"],
-      required: false,
+      default: "TODO",
+      required: true,
     },
     priority: {
       type: String,
       enum: ["LOW", "MEDIUM", "HIGH"],
+
       required: true,
     },
     reporterId: {
@@ -33,7 +35,7 @@ const ticketSchema = new Schema(
     teamId: {
       type: Types.ObjectId,
       ref: "Team",
-      required: false,
+      required: true,
     },
   },
   { timestamps: true },
