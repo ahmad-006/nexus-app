@@ -7,80 +7,112 @@ import { imagekit, upload } from "../util/imagekit.js";
 
 export const uploadImage = upload.single("image");
 
-// Search for a user by email and return their profile without the password
+/**
+ * @desc    Get current user profile
+ * @route   GET /api/users/me
+ * @access  Private
+ */
 export const getUser = catchAsync(async (req, res, next) => {
-  const { userid } = req.headers;
-
-  const user = await User.findById(userid).select("-password");
+  const user = await User.findById(req.user.id).select("-password");
   return res.status(200).json({ status: "success", user });
 });
 
-// Get all teams that the current user is a part of
+/**
+ * @desc    Get all teams for the current user
+ * @route   GET /api/users/me/teams
+ * @access  Private
+ */
 export const getTeams = catchAsync(async (req, res, next) => {
-  const { userid } = req.headers;
-  if (!userid) return next(new AppError("userid is required", 404));
+  const userId = req.user.id;
 
   // Find teams where the user is listed in the members array
-  const teams = await Team.find({ members: userid });
+  const teams = await Team.find({ "members.userId": userId });
   if (teams.length === 0) return next(new AppError("No teams found", 404));
 
-  return res.status(200).json({ status: "success", teams: { teams } });
+  return res.status(200).json({ status: "success", data: { teams } });
 });
 
+/**
+ * @desc    Get a user by ID
+ * @route   GET /api/users/:userId
+ * @access  Private
+ */
 export const getUserById = catchAsync(async (req, res, next) => {
   const { userId } = req.params;
   if (!userId) return next(new AppError("userId is required", 400));
 
-  const user = await User.findById(userId);
+  const user = await User.findById(userId).select("-password");
   if (!user) return next(new AppError("User not found", 404));
 
-  return res.status(200).json({ message: "User found", user });
+  return res.status(200).json({ status: "success", data: { user } });
 });
 
-// Going to implement when JWT is implemented
+/**
+ * @desc    Update current user profile
+ * @route   PATCH /api/users/me
+ * @access  Private
+ */
 export const patchUserProfile = catchAsync(async (req, res) => {
   const { name, image } = req.body;
-  const { userid } = req.headers;
+  const userId = req.user.id;
 
   const user = await User.findByIdAndUpdate(
-    userid,
+    userId,
     { name, image },
     { new: true, runValidators: true },
-  );
+  ).select("-password");
 
-  return res.status(200).json({ status: "success", user });
+  return res.status(200).json({ status: "success", data: { user } });
 });
-export const deleteUser = async (req, res) => {
-  const { userid } = req.headers;
-  await User.findByIdAndDelete(userid);
-  return res
-    .status(204)
-    .json({ status: "success", message: "User deleted successfully" });
-};
-export const getTickets = async (req, res) => {
-  const { userid, teamid } = req.headers;
-  const tickets = await Ticket.find({
-    $or: [{ reporterId: userid }, { assigneeId: userid }],
-    teamId: teamid,
-  });
 
-  return res.status(200).json({ status: "success", tickets });
-};
+/**
+ * @desc    Delete current user account
+ * @route   DELETE /api/users/me
+ * @access  Private
+ */
+export const deleteUser = catchAsync(async (req, res) => {
+  await User.findByIdAndDelete(req.user.id);
+  return res.status(204).json({ status: "success", data: null });
+});
 
+/**
+ * @desc    Get all tickets assigned to or reported by current user in a specific team
+ * @route   GET /api/users/me/tickets
+ * @access  Private
+ */
+export const getTickets = catchAsync(async (req, res) => {
+  const userId = req.user.id;
+  const { teamid } = req.headers; // Keeping teamid in header for this specific context-less list
+
+  const query = {
+    $or: [{ reporterId: userId }, { assigneeId: userId }],
+  };
+
+  if (teamid) query.teamId = teamid;
+
+  const tickets = await Ticket.find(query);
+
+  return res.status(200).json({ status: "success", results: tickets.length, data: { tickets } });
+});
+
+/**
+ * @desc    Upload profile image for current user
+ * @route   POST /api/users/me/image
+ * @access  Private
+ */
 export const postImage = catchAsync(async (req, res, next) => {
-  const { userid } = req.headers;
-  if (!userid) return next(new AppError("userid is required", 400));
+  const userId = req.user.id;
 
   if (!req.file) return next(new AppError("No file uploaded", 400));
 
   const uploadResponse = await imagekit.upload({
     file: req.file.buffer,
-    fileName: `user-${userid}-${Date.now()}`,
+    fileName: `user-${userId}-${Date.now()}`,
     folder: "/nexus-users",
   });
 
-  const user = await User.findByIdAndUpdate(
-    userid,
+  await User.findByIdAndUpdate(
+    userId,
     {
       image: uploadResponse.url,
     },
@@ -89,5 +121,5 @@ export const postImage = catchAsync(async (req, res, next) => {
 
   return res
     .status(200)
-    .json({ status: "success", imageUrl: uploadResponse.url });
+    .json({ status: "success", data: { imageUrl: uploadResponse.url } });
 });
