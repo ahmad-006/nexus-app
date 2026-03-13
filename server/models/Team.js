@@ -15,8 +15,8 @@ const teamSchema = new Schema(
       {
         role: {
           type: String,
-          enum: ["Member", "Admin"],
-          default: "Member",
+          enum: ["member", "admin"],
+          default: "member",
         },
         userId: {
           type: Types.ObjectId,
