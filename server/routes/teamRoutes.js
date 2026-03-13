@@ -5,7 +5,7 @@ import {
   postAddMember,
   postCreateTeam,
 } from "../controllers/teamController.js";
-import { isAdmin } from "../middleware/role-check.js";
+import { isMember, restrictTo } from "../middleware/role-check.js";
 import { teamValidation } from "../middleware/validator.js";
 import { validate } from "../middleware/validate.js";
 import { protect } from "../controllers/authController.js";
@@ -22,17 +22,25 @@ teamsRouter
 teamsRouter
   .route("/:teamId/members/:userId")
   .patch(
-    isAdmin,
+    isMember,
+    restrictTo("admin"),
     [teamValidation.userId, teamValidation.teamId],
     validate,
     patchPromoteToAdmin,
   )
-  .delete(isAdmin, [teamValidation.userId, teamValidation.teamId], validate, deleteMember);
+  .delete(
+    isMember,
+    restrictTo("admin"),
+    [teamValidation.userId, teamValidation.teamId],
+    validate,
+    deleteMember,
+  );
 
 teamsRouter
   .route("/:teamId/members")
   .post(
-    isAdmin,
+    isMember,
+    restrictTo("admin"),
     [teamValidation.userId, teamValidation.teamId],
     validate,
     postAddMember,
