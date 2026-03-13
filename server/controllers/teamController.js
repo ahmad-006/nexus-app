@@ -3,28 +3,39 @@ import { User } from "../models/User.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 
-// Create a new team and make the owner an admin and member by default
+/**
+ * @desc    Create a new team
+ * @route   POST /api/teams
+ * @access  Private (user)
+ */
 export const postCreateTeam = catchAsync(async (req, res, next) => {
-  const { name, ownerId } = req.body;
+  const { name } = req.body;
+  const { _id: ownerId } = req.user;
+
+  if (!name) return next(new AppError("Name is required", 400));
 
   const team = new Team({
     name,
     ownerId,
-    admins: [ownerId],
-    members: [ownerId],
+    members: [{ role: "admin", userId: ownerId }],
   });
   await team.save();
 
   return res.status(200).json({
-    message: "Team created Successfully",
-    response: { team },
+    status: "success",
+    data: {
+      team,
+    },
   });
 });
 
-// Promote a member to admin and sync the role in both Team and User models
+/**
+ * @desc    Promote a member to admin
+ * @route   PATCH /api/teams/:teamId/members/:userId
+ * @access  Private (admin)
+ */
 export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
-  const { id: teamId } = req.params;
-  const { userId } = req.body;
+  const { teamId, userId } = req.params;
 
   if (!userId || !teamId)
     return next(new AppError("userId and teamId required", 400));
@@ -34,21 +45,27 @@ export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
 
   // Check if user is actually in the team before promoting
   const isMember = team.members.some(
-    (id) => id.toString() === userId.toString(),
+    (member) => member.userId.toString() === userId.toString(),
   );
   if (!isMember) return next(new AppError("User is not of this team", 400));
 
-  const isAlreadyAdmin = team.admins.some(
-    (id) => id.toString() === userId.toString(),
+  const isAlreadyAdmin = team.members.some(
+    (member) =>
+      member.userId.toString() === userId.toString() && member.role === "admin",
   );
   if (isAlreadyAdmin) return next(new AppError("User is already admin", 400));
 
   // Add user to admin list in the Team model
-  const response = await Team.findByIdAndUpdate(
+  const updatedMembers = team.members.map((member) => {
+    if (member.userId.toString() === userId.toString()) {
+      return { ...member, role: "admin" };
+    }
+    return member;
+  });
+
+  const updatedTeam = await Team.findByIdAndUpdate(
     teamId,
-    {
-      $addToSet: { admins: userId },
-    },
+    { members: updatedMembers },
     { new: true },
   );
 
@@ -59,14 +76,20 @@ export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
   );
 
   return res.status(200).json({
-    message: "Updated role successfully ",
-    Team: response,
+    status: "success",
+    data: {
+      updatedTeam,
+    },
   });
 });
 
-// Add a new user to the team and update the user's teams list
+/**
+ * @desc    Add a new member to a team
+ * @route   POST /api/teams/:teamId/members
+ * @access  Private (admin)
+ */
 export const postAddMember = catchAsync(async (req, res, next) => {
-  const { id: teamId } = req.params;
+  const { teamId } = req.params;
   const { userId } = req.body;
 
   if (!userId || !teamId)
@@ -79,16 +102,16 @@ export const postAddMember = catchAsync(async (req, res, next) => {
   if (!team) return next(new AppError("Team not found", 404));
 
   const isAlreadyMember = team.members.some(
-    (id) => id.toString() === userId.toString(),
+    (member) => member.userId.toString() === userId.toString(),
   );
   if (isAlreadyMember)
     return next(new AppError("User is already a member of this team", 400));
 
   // Push the user to the team's member array
-  const response = await Team.findByIdAndUpdate(
+  const updatedTeam = await Team.findByIdAndUpdate(
     teamId,
     {
-      $addToSet: { members: userId },
+      $addToSet: { members: { userId, role: "member" } },
     },
     { new: true },
   );
@@ -98,7 +121,54 @@ export const postAddMember = catchAsync(async (req, res, next) => {
   await user.save();
 
   return res.status(200).json({
-    message: "Member added successfully",
-    response,
+    status: "success",
+    data: {
+      updatedTeam,
+    },
+  });
+});
+
+/**
+ * @desc    Remove a member from a team
+ * @route   DELETE /api/teams/:teamId/members/:userId
+ * @access  Private (admin)
+ */
+export const deleteMember = catchAsync(async (req, res, next) => {
+  const { teamId, userId } = req.params;
+
+  if (!teamId || !userId) {
+    return next(new AppError("Team ID and User ID are required", 400));
+  }
+
+  const team = await Team.findById(teamId);
+  if (!team) return next(new AppError("Team not found", 404));
+
+  // Check if the user is a member of the team
+  const isMember = team.members.some(
+    (member) => member.userId.toString() === userId.toString(),
+  );
+  if (!isMember)
+    return next(new AppError("User is not a member of this team", 400));
+
+  const updatedMember = team.members.filter(
+    (member) => member.userId.toString() !== userId.toString(),
+  );
+
+  const updatedTeam = await Team.findByIdAndUpdate(
+    teamId,
+    { members: updatedMember },
+    { new: true },
+  );
+
+  await User.updateOne(
+    { _id: userId, "teams.teamId": teamId },
+    { $pull: { teams: { teamId } } },
+  );
+
+  return res.status(200).json({
+    status: "success",
+    data: {
+      updatedTeam,
+    },
   });
 });
