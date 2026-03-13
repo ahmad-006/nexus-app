@@ -14,7 +14,7 @@ import { validate } from "../middleware/validate.js";
 import { protect } from "../controllers/authController.js";
 
 const ticketRouter = express.Router();
-const ticketUpdateRules = [
+const ticketUpdateValidation = [
   ticketValidation.title,
   ticketValidation.description,
   ticketValidation.priority,
@@ -27,37 +27,43 @@ const ticketUpdateRules = [
 ROUTES
 */
 
+/*
+  ?By TEAMID:
+  Creating a ticket
+  Getting all the tickets
+*/
+
 ticketRouter
-  .route("/")
+  .route("/team/:teamId")
   .get(protect, getTickets)
-  .post(ticketUpdateRules, validate, postTicket);
+  .post(ticketUpdateValidation, validate, postTicket);
+
+/*
+  ?By ID:
+  Getting a ticket 
+  Updating a ticket
+  deleting a ticket 
+*/
+
 ticketRouter
-  .route("/:id")
+  .route("/:ticketId")
   .get(getTicket)
-  .patch(
-    isAdmin,
-    [
-      ticketValidation.title,
-      ticketValidation.description,
-      ticketValidation.priority,
-      ticketValidation.teamId,
-      ticketValidation.optionalAssignee,
-      ticketValidation.optionalStatus,
-    ],
-    validate,
-    patchTicket,
-  )
+  .patch(isAdmin, ticketUpdateValidation, validate, patchTicket)
   .delete(isAdmin, deleteTicket);
+
+//Updating the ticket status
 ticketRouter
-  .route("/:id/status")
+  .route("/:ticketId/status")
   .patch(
     isMember,
     [ticketValidation.createStatus],
     validate,
     patchTicketStatus,
   );
+
+//Assigning a ticket
 ticketRouter
-  .route("/:id/assign")
+  .route("/:ticketId/assign")
   .patch(isAdmin, [ticketValidation.createAssignee], validate, assignToUser);
 
 export { ticketRouter };
