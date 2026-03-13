@@ -8,7 +8,11 @@ import {
   patchTicketStatus,
   assignToUser,
 } from "../controllers/ticketController.js";
-import { isAdmin, isMember } from "../middleware/role-check.js";
+import {
+  isMember,
+  restrictTo,
+  isAdminOrReporter,
+} from "../middleware/role-check.js";
 import { ticketValidation } from "../middleware/validator.js";
 import { validate } from "../middleware/validate.js";
 import { protect } from "../controllers/authController.js";
@@ -35,8 +39,8 @@ ROUTES
 
 ticketRouter
   .route("/team/:teamId")
-  .get(protect, getTickets)
-  .post(ticketUpdateValidation, validate, postTicket);
+  .get(protect, isMember, getTickets)
+  .post(protect, isMember, ticketUpdateValidation, validate, postTicket);
 
 /*
   ?By ID:
@@ -47,15 +51,16 @@ ticketRouter
 
 ticketRouter
   .route("/:ticketId")
-  .get(getTicket)
-  .patch(isAdmin, ticketUpdateValidation, validate, patchTicket)
-  .delete(isAdmin, deleteTicket);
+  .get(protect, getTicket) // Any logged in user can see a ticket if they have the ID
+  .patch(protect, isAdminOrReporter, ticketUpdateValidation, validate, patchTicket)
+  .delete(protect, isAdminOrReporter, deleteTicket);
 
 //Updating the ticket status
 ticketRouter
   .route("/:ticketId/status")
   .patch(
-    isMember,
+    protect,
+    isMember, // This needs a team context, we might need a custom check here if teamId isn't in URL
     [ticketValidation.createStatus],
     validate,
     patchTicketStatus,
@@ -64,6 +69,13 @@ ticketRouter
 //Assigning a ticket
 ticketRouter
   .route("/:ticketId/assign")
-  .patch(isAdmin, [ticketValidation.createAssignee], validate, assignToUser);
+  .patch(
+    protect,
+    isMember,
+    restrictTo("admin"),
+    [ticketValidation.createAssignee],
+    validate,
+    assignToUser,
+  );
 
 export { ticketRouter };
