@@ -3,182 +3,234 @@ import { Ticket } from "../models/Ticket.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 
-// Fetch all tickets that belong to a specific team
+/*
+@desc    Fetch all the tickets belonging to a specific team
+@route   GET /api/tickets/team/:teamId
+@access  Private (Member)  
+*/
 const getTickets = catchAsync(async (req, res, next) => {
-  const teamId = req.headers["teamid"];
+  const { teamId } = req.params;
   const tickets = await Ticket.find({ teamId });
   res.status(200).json({
-    message: "All tickets retrieved successfully",
-    count: tickets.length,
-    tickets,
+    status: "success",
+    results: tickets.length,
+    data: {
+      tickets,
+    },
   });
 });
 
-// Get details for a specific ticket by its ID
-const getTicket = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
+/*
+@desc    Fetch a single ticket by ID
+@route   GET /api/tickets/:ticketId
+@access  Public 
+*/
 
-  const ticket = await Ticket.findById(id);
+const getTicket = catchAsync(async (req, res, next) => {
+  const { ticketId } = req.params;
+
+  const ticket = await Ticket.findById(ticketId);
   if (!ticket) return next(new AppError("Ticket not found", 404));
 
   res.status(200).json({
-    message: "Ticket retrieved successfully",
-    ticket,
+    status: "success",
+    data: {
+      ticket,
+    },
   });
 });
 
-// Create a new ticket and set the reporter to the current user
-const postTicket = catchAsync(async (req, res, next) => {
-  const { title, description, priority } = req.body;
-  const { teamid, userid } = req.headers;
+/*
+@desc    create a ticket in the specific team
+@route   POST /api/tickets/team/:teamId
+@access  Private (Member or Admin)  
+*/
 
-  if (!teamid || !userid) {
-    return next(new AppError("teamid and userid headers are required", 400));
+const postTicket = catchAsync(async (req, res, next) => {
+  const { title, description, status, priority } = req.body;
+  const { teamId } = req.params;
+  const { _id: userId } = req.user;
+
+  if (!teamId || !userId) {
+    return next(new AppError("teamId and userId are required", 400));
   }
   const ticket = new Ticket({
     title,
     description,
     priority: priority.toUpperCase(),
-    teamId: teamid,
+    teamId: teamId,
     assigneeId: null,
-    reporterId: userid,
+    reporterId: userId,
   });
   const savedTicket = await ticket.save();
 
   res.status(201).json({
-    message: "Ticket created successfully",
-    ticket: savedTicket,
+    status: "success",
+    data: {
+      ticket: savedTicket,
+    },
   });
 });
 
-// Update ticket info like title, description or priority
+/*
+@desc    Update a specific ticket by ID
+@route   PATCH /api/tickets/:ticketId
+@access  Private (Admin or Reporter)
+*/
 const patchTicket = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
+  const { ticketId } = req.params;
   const { title, description, priority } = req.body;
   const updatedData = {};
 
-  const oldData = await Ticket.findById(id);
-  if (!oldData) return next(new AppError("Ticket not found", 404));
+  //finding the ticket and storing it in oldTicket
+  const oldTicket = await Ticket.findById(ticketId);
+  if (!oldTicket) return next(new AppError("Ticket not found", 404));
 
+  //adding changed fields in updated data to update
   if (title) updatedData.title = title;
   if (description) updatedData.description = description;
   if (priority) updatedData.priority = priority;
 
+  //throwing update if no field is changed
   if (Object.keys(updatedData).length === 0) {
     return next(new AppError("Nothing to update", 400));
   }
 
-  const response = await Ticket.findByIdAndUpdate(id, updatedData, {
+  //updating the ticket
+  const updatedTicket = await Ticket.findByIdAndUpdate(ticketId, updatedData, {
     runValidators: true,
     new: true,
   });
 
+  //sending the response
   res.status(200).json({
-    message: "Ticket updated successfully",
-    ticket: response,
+    status: "success",
+    data: {
+      ticket: updatedTicket,
+    },
   });
 });
 
-// Handle status changes based on the allowed workflow transitions
+/*
+@desc    Fetch all the tickets belonging to a specific team
+@route   PATCH /api/tickets/team/:ticketId/status
+@access  Private (Member)  
+*/
+
 export const patchTicketStatus = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
+  const { ticketId } = req.params;
   const { status: newStatus } = req.body;
   const updatedData = {};
-  const oldData = await Ticket.findById(id);
 
-  if (!oldData) return next(new AppError("Ticket not found", 404));
-
-  // Handle the first time status is being set
-  if (!oldData.status) {
-    if (newStatus !== "TODO")
-      return next(
-        new AppError(
-          "Cannot set status other than TODO for the first time",
-          400,
-        ),
-      );
-    else oldData.status = "notSet";
-  }
-  if (oldData.status === newStatus)
-    return next(new AppError("Nothing to update...", 400));
-
+  //If there is no ticket in the body
   if (!newStatus) return next(new AppError("Status is required.", 400));
+
+  // fetching the ticket by id
+  const oldTicket = await Ticket.findById(ticketId);
+  if (!oldTicket) return next(new AppError("Ticket not found", 404));
+
+  // throwing error if status is same as before
+  if (oldTicket.status === newStatus)
+    return next(new AppError("Nothing to update...", 400));
 
   // Logic to prevent jumping states (e.g. TODO to DONE)
   const allowedTransitions = {
-    notSet: ["TODO"],
     TODO: ["IN_PROGRESS"],
     IN_PROGRESS: ["TODO", "DONE"],
     DONE: ["IN_PROGRESS", "TODO"],
   };
 
-  if (!allowedTransitions[oldData.status].includes(newStatus)) {
+  //setting current status to TODO if somehow it is undefined
+  const currentStatus = oldTicket.status || "TODO";
+
+  // If transition is not allowed (e.g, TODO to DONE)
+  if (!allowedTransitions[currentStatus].includes(newStatus)) {
     return next(
       new AppError(
-        `Invalid transition from ${oldData.status} to ${newStatus}`,
+        `Invalid transition from ${currentStatus} to ${newStatus}`,
         400,
       ),
     );
   }
 
+  //updating ticket
   updatedData.status = newStatus;
-  const response = await Ticket.findByIdAndUpdate(id, updatedData, {
+  const updateTicket = await Ticket.findByIdAndUpdate(ticketId, updatedData, {
     runValidators: true,
     new: true,
   });
 
+  //sending response
   return res.status(200).json({
-    message: "Ticket updated successfully",
-    ticket: response,
+    status: "success",
+    data: {
+      ticket: updateTicket,
+    },
   });
 });
 
-// Assign a ticket to a user and check if they belong to the team
+/*
+@desc    Assigning the ticket to user
+@route   PATCH /api/tickets/:ticketId/assign
+@access  Private (Admin)  
+*/
 export const assignToUser = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
+  const { ticketId } = req.params;
   const { assigneeId } = req.body;
+  const { _id: userId } = req.user;
 
-  const ticket = await Ticket.findById(id);
+  const ticket = await Ticket.findById(ticketId);
   if (!ticket) return next(new AppError("Ticket not found", 404));
 
-  // Unassign ticket if no assigneeId is provided
+  // UnAssign ticket if no assigneeId is provided
   if (!assigneeId) {
-    const response = await Ticket.findByIdAndUpdate(
-      id,
+    const updatedTicket = await Ticket.findByIdAndUpdate(
+      ticketId,
       { assigneeId: null },
       { new: true },
     );
-    return res
-      .status(200)
-      .json({ message: "Ticket unassigned", ticket: response });
+    return res.status(200).json({
+      status: "success",
+      data: {
+        ticket: updatedTicket,
+      },
+    });
   }
 
-  // Check if the user is actually a member of the team
+  // Check if the assigned user is actually a member of the team
   const team = await Team.findById(ticket.teamId);
   const isMember = team.members.some(
-    (mId) => mId.toString() === assigneeId.toString(),
+    (m) => m.userId.toString() === assigneeId.toString(),
   );
 
+  //throwing error If user isn't member of the team
   if (!isMember) {
     return next(new AppError("User is not of this Team", 400));
   }
 
   const response = await Ticket.findByIdAndUpdate(
-    id,
+    ticketId,
     { assigneeId },
     { new: true },
   );
   return res
     .status(200)
-    .json({ message: "Ticket Assigned successfully", ticket: response });
+    .json({ status: "success", data: { ticket: response } });
 });
 
-// Remove a ticket from the database
+/*
+@desc    Deleting a ticket by Id
+@route   DELETE /api/tickets/:ticketId
+@access  Private (Admin)  
+*/
 const deleteTicket = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
-  const result = await Ticket.findByIdAndDelete(id);
+  const { ticketId } = req.params;
+  //deleting the ticket
+  const result = await Ticket.findByIdAndDelete(ticketId);
+  //throwing an error if there is no ticket
   if (!result) return next(new AppError("Ticket not found", 404));
-  res.status(200).json({ message: "Ticket deleted successfully" });
+  //sending the response
+  res.status(204).json({ status: "success", data: null });
 });
 
 export { getTicket, getTickets, postTicket, patchTicket, deleteTicket };
