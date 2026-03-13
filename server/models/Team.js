@@ -10,18 +10,18 @@ const teamSchema = new Schema(
       type: Types.ObjectId,
       ref: "User",
     },
-    admins: [
-      {
-        type: Types.ObjectId,
-        ref: "User",
-        required: true,
-      },
-    ],
+
     members: [
       {
-        type: Types.ObjectId,
-        ref: "User",
-        required: true,
+        role: {
+          type: String,
+          enum: ["Member", "Admin"],
+          default: "Member",
+        },
+        userId: {
+          type: Types.ObjectId,
+          ref: "User",
+        },
       },
     ],
   },
