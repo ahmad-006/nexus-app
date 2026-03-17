@@ -1,6 +1,11 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
+import mongoSanitize from "express-mongo-sanitize";
+import xss from "xss-clean";
+import cookieParser from "cookie-parser";
 
 // DB connection
 import { mongooseConnect } from "./util/database";
@@ -21,10 +26,34 @@ process.on("uncaughtException", (err) => {
 
 const app = express();
 
+//GLOBAL MIDDLEWARES
+//Set security headers
+app.use(helmet());
+
+//data sanitization against NOSQL queries
+app.use(mongoSanitize());
+
+//data sanitization against XSS
+app.use(xss());
+
+//cors
+app.use(cors());
+
+//morgan for logging all the requests server receives
+if (process.env.NODE_ENV === "development") app.use(morgan("dev"));
+
+//request limiting so that 100 api requests are allowed in an hour
+const limiter = rateLimit({
+  max: 100,
+  windowMs: 60 * 60 * 1000,
+  message: "Too many requests from this IP, please try again in an hour!",
+});
+app.use("/api", limiter);
+
 //req.body parser
 app.use(express.json());
-app.use(cors());
-if (process.env.NODE_ENV === "development") app.use(morgan("dev"));
+//req.cookie parsing
+app.use(cookieParser());
 
 //Routes
 app.use("/api/teams", teamsRouter);
