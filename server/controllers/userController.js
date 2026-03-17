@@ -14,7 +14,7 @@ export const uploadImage = upload.single("image");
  */
 export const getUser = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.user.id).select("-password");
-  return res.status(200).json({ status: "success", user });
+  return res.status(200).json({ status: "success", data: { user } });
 });
 
 /**
@@ -72,6 +72,15 @@ export const patchUserProfile = catchAsync(async (req, res) => {
  */
 export const deleteUser = catchAsync(async (req, res) => {
   await User.findByIdAndDelete(req.user.id);
+  await Team.updateMany(
+    { "members.userId": req.user.id },
+    { $pull: { members: { userId: req.user.id } } },
+  );
+  await Ticket.updateMany(
+    { $or: [{ reporterId: req.user.id }, { assigneeId: req.user.id }] },
+    { $set: { assigneeId: null } },
+  );
+
   return res.status(204).json({ status: "success", data: null });
 });
 
@@ -80,19 +89,19 @@ export const deleteUser = catchAsync(async (req, res) => {
  * @route   GET /api/users/me/tickets
  * @access  Private
  */
-export const getTickets = catchAsync(async (req, res) => {
+export const getTickets = catchAsync(async (req, res, next) => {
   const userId = req.user.id;
-  const { teamid } = req.headers; // Keeping teamid in header for this specific context-less list
+  const { teamId } = req.query;
+  if (!teamId) return next(new AppError("teamId is required", 400));
 
-  const query = {
+  const tickets = await Ticket.find({
     $or: [{ reporterId: userId }, { assigneeId: userId }],
-  };
+    teamId,
+  });
 
-  if (teamid) query.teamId = teamid;
-
-  const tickets = await Ticket.find(query);
-
-  return res.status(200).json({ status: "success", results: tickets.length, data: { tickets } });
+  return res
+    .status(200)
+    .json({ status: "success", results: tickets.length, data: { tickets } });
 });
 
 /**

@@ -21,11 +21,7 @@ userRouter.use(protect);
 userRouter
   .route("/me")
   .get(getUser)
-  .patch(
-    [userValidation.name],
-    validate,
-    patchUserProfile,
-  )
+  .patch([userValidation.name], validate, patchUserProfile)
   .delete(deleteUser);
 
 userRouter.post("/me/image", uploadImage, postImage);
