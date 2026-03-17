@@ -10,7 +10,7 @@ import { AppError } from "../util/appError.js";
  */
 export const postCreateTeam = catchAsync(async (req, res, next) => {
   const { name } = req.body;
-  const { _id: ownerId } = req.user;
+  const { id: ownerId } = req.user;
 
   if (!name) return next(new AppError("Name is required", 400));
 
@@ -20,6 +20,9 @@ export const postCreateTeam = catchAsync(async (req, res, next) => {
     members: [{ role: "admin", userId: ownerId }],
   });
   await team.save();
+
+  req.user.teams.push({ teamId: team._id, role: "admin" });
+  await req.user.save();
 
   return res.status(200).json({
     status: "success",
@@ -171,4 +174,31 @@ export const deleteMember = catchAsync(async (req, res, next) => {
       updatedTeam,
     },
   });
+});
+
+/*
+@desc    Fetch all the tickets belonging to a specific team
+@route   GET /api/teams/:teamId/tickets
+@access  Private (Admin)  
+*/
+
+export const deleteTeam = catchAsync(async (req, res, next) => {
+  const { teamId } = req.params;
+
+  if (!teamId) return next(new AppError("Team ID is required", 400));
+  const team = await Team.findById(teamId);
+  if (!team) return next(new AppError("Team not found", 404));
+  const { ownerId } = team;
+  if (ownerId.toString() !== req.user.id) {
+    return next(new AppError("You are not the owner of this team", 403));
+  }
+
+  await User.updateMany(
+    { "teams.teamId": teamId },
+    { $pull: { teams: { teamId } } },
+  );
+  await Ticket.deleteMany({ teamId });
+  await Team.findByIdAndDelete(teamId);
+
+  return res.status(204).json({ status: "success", data: null });
 });
