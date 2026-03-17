@@ -15,9 +15,7 @@ const teamsRouter = express.Router();
 // Apply protect to all team routes
 teamsRouter.use(protect);
 
-teamsRouter
-  .route("/")
-  .post([teamValidation.name], validate, postCreateTeam);
+teamsRouter.route("/").post([teamValidation.name], validate, postCreateTeam);
 
 teamsRouter
   .route("/:teamId/members/:userId")
