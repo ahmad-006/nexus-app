@@ -61,4 +61,21 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   return false;
 };
 
+userSchema.pre("save", async function () {
+  // Only run this function if password was actually modified
+  if (!this.isModified("password")) return;
+
+  // Hash the password with cost of 10
+  this.password = await bcrypt.hash(this.password, 10);
+
+  // Delete confirmPassword field
+  this.confirmPassword = undefined;
+});
+
+userSchema.pre("save", function (next) {
+  if (!this.isModified("password") || this.isNew) return;
+
+  this.passwordChangedAt = Date.now() - 1000;
+});
+
 export const User = mongoose.model("User", userSchema);
