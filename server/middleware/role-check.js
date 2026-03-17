@@ -71,7 +71,7 @@ const isAdminOrReporter = catchAsync(async (req, res, next) => {
 
   if (!ticket) return next(new AppError("Ticket not found", 404));
 
-  const isReporter = ticket.reporterId.toString() === req.user._id.toString();
+  const isReporter = ticket.reporterId.toString() === req.user.id;
   const teamId = ticket.teamId.toString();
 
   const userTeam = req.user.teams.find(

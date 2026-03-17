@@ -47,9 +47,9 @@ const getTicket = catchAsync(async (req, res, next) => {
 */
 
 const postTicket = catchAsync(async (req, res, next) => {
-  const { title, description, status, priority } = req.body;
+  const { title, description, priority } = req.body;
   const { teamId } = req.params;
-  const { _id: userId } = req.user;
+  const { id: userId } = req.user;
 
   if (!teamId || !userId) {
     return next(new AppError("teamId and userId are required", 400));
@@ -177,7 +177,6 @@ export const patchTicketStatus = catchAsync(async (req, res, next) => {
 export const assignToUser = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
   const { assigneeId } = req.body;
-  const { _id: userId } = req.user;
 
   const ticket = await Ticket.findById(ticketId);
   if (!ticket) return next(new AppError("Ticket not found", 404));

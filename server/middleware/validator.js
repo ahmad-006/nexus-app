@@ -76,7 +76,7 @@ export const ticketValidation = {
     .isIn(["LOW", "MEDIUM", "HIGH"])
     .withMessage("Invalid Priority"),
   reporterId: check("reporterId").isMongoId().withMessage("Invalid Reporter"),
-  teamId: check("teamid").isMongoId().withMessage("Invalid Team"),
+  teamId: check("teamId").isMongoId().withMessage("Invalid Team"),
   get optionalStatus() {
     return ticketValidationBase.status().optional({ values: "falsy" });
   },
