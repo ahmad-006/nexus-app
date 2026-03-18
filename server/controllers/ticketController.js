@@ -1,8 +1,11 @@
 import { Team } from "../models/Team.js";
 import { Ticket } from "../models/Ticket.js";
+import { User } from "../models/User.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 import { APIFeatures } from "../util/apiFeatures.js";
+import { sendEmail } from "../util/nodemailer.js";
+import { Types } from "mongoose";
 
 /*
 @desc    Fetch all the tickets belonging to a specific team
@@ -128,7 +131,7 @@ const patchTicket = catchAsync(async (req, res, next) => {
 @access  Private (Member)  
 */
 
-export const patchTicketStatus = catchAsync(async (req, res, next) => {
+const patchTicketStatus = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
   const { status: newStatus } = req.body;
   const updatedData = {};
@@ -171,6 +174,19 @@ export const patchTicketStatus = catchAsync(async (req, res, next) => {
     new: true,
   });
 
+  // SEND EMAIL NOTIFICATION (Non-blocking)
+  // Fetch the reporter's email to notify them of the change
+  const reporter = await User.findById(oldTicket.reporterId);
+  if (reporter) {
+    sendEmail({
+      name: reporter.name.split(" ")[0],
+      email: reporter.email,
+      type: "statusUpdate",
+      ticketTitle: oldTicket.title,
+      status: newStatus,
+    }).catch((err) => console.error("Status Update Email Failed:", err.message));
+  }
+
   //sending response
   return res.status(200).json({
     status: "success",
@@ -185,7 +201,7 @@ export const patchTicketStatus = catchAsync(async (req, res, next) => {
 @route   PATCH /api/tickets/:ticketId/assign
 @access  Private (Admin)  
 */
-export const assignToUser = catchAsync(async (req, res, next) => {
+const assignToUser = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
   const { assigneeId } = req.body;
 
@@ -223,6 +239,20 @@ export const assignToUser = catchAsync(async (req, res, next) => {
     { assigneeId },
     { new: true },
   );
+
+  // SEND EMAIL NOTIFICATION
+  const assignee = await User.findById(assigneeId);
+  if (assignee) {
+    sendEmail({
+      name: assignee.name.split(" ")[0],
+      email: assignee.email,
+      type: "assignment",
+      ticketTitle: ticket.title,
+      priority: ticket.priority,
+      adminName: req.user.name,
+    }).catch((err) => console.error("Assignment Email Failed:", err.message));
+  }
+
   return res
     .status(200)
     .json({ status: "success", data: { ticket: response } });
@@ -243,4 +273,77 @@ const deleteTicket = catchAsync(async (req, res, next) => {
   res.status(204).json({ status: "success", data: null });
 });
 
-export { getTicket, getTickets, postTicket, patchTicket, deleteTicket };
+/*
+@desc    Fetch all the stats of tickets belonging to a specific team
+@route   GET /api/tickets/team/:teamId/stats
+@access  Private (Member)  
+*/
+
+const getStats = catchAsync(async (req, res, next) => {
+  const { teamId } = req.params;
+  const stats = await Ticket.aggregate([
+    {
+      $match: {
+        teamId: new Types.ObjectId(teamId),
+      },
+    },
+    {
+      $facet: {
+        totalTickets: [{ $count: "count" }],
+        statusBreakdown: [
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              status: "$_id",
+              count: 1,
+            },
+          },
+        ],
+        priorityBreakdown: [
+          {
+            $group: {
+              _id: "$priority",
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              priority: "$_id",
+              count: 1,
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  const formattedStats = {
+    totalTickets: stats[0].totalTickets[0]?.count || 0,
+    statusBreakdown: stats[0].statusBreakdown || [],
+    priorityBreakdown: stats[0].priorityBreakdown || [],
+  };
+
+  return res.status(200).json({
+    status: "success",
+    data: {
+      stats: formattedStats,
+    },
+  });
+});
+export {
+  getTicket,
+  getTickets,
+  postTicket,
+  patchTicket,
+  deleteTicket,
+  getStats,
+  assignToUser,
+  patchTicketStatus,
+};
