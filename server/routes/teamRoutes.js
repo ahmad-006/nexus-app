@@ -1,6 +1,7 @@
 import express from "express";
 import {
   deleteMember,
+  patchAcceptInvite,
   patchPromoteToAdmin,
   postAddMember,
   postCreateTeam,
@@ -12,11 +13,16 @@ import { protect } from "../controllers/authController.js";
 
 const teamsRouter = express.Router();
 
-// Apply protect to all team routes
+// 1) GLOBAL PROTECTION
 teamsRouter.use(protect);
 
+// 2) STATIC ROUTES
+teamsRouter.route("/accept-invite/members/:token").patch(patchAcceptInvite);
+
+// 3) BASE ROUTES
 teamsRouter.route("/").post([teamValidation.name], validate, postCreateTeam);
 
+// 4) DYNAMIC TEAM ROUTES (Member restricted)
 teamsRouter
   .route("/:teamId/members/:userId")
   .patch(
