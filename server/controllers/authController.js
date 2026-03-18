@@ -50,7 +50,6 @@ export const postSignUp = catchAsync(async (req, res, next) => {
   await sendEmail({
     name: newUser.name.split(" ")[0],
     email: newUser.email,
-    token: null,
     type: "signup",
   });
 
