@@ -1,0 +1,110 @@
+[
+  {
+    "title": "Bug in Authentication",
+    "description": "User cannot log in with correct credentials.",
+    "status": "TODO",
+    "priority": "HIGH",
+    "reporterId": "647f0f0b4d00000000000002",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-01T10:00:00Z"
+  },
+  {
+    "title": "Update Documentation",
+    "description": "The API documentation is outdated.",
+    "status": "TODO",
+    "priority": "LOW",
+    "reporterId": "647f0f0b4d00000000000001",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-02T10:00:00Z"
+  },
+  {
+    "title": "Fix CSS on Dashboard",
+    "description": "Buttons are overlapping.",
+    "status": "IN_PROGRESS",
+    "priority": "MEDIUM",
+    "reporterId": "647f0f0b4d00000000000002",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-03T10:00:00Z"
+  },
+  {
+    "title": "Database Optimization",
+    "description": "Queries are slow.",
+    "status": "DONE",
+    "priority": "HIGH",
+    "reporterId": "647f0f0b4d00000000000001",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-04T10:00:00Z"
+  },
+  {
+    "title": "Implement Webhooks",
+    "description": "Add support for Slack notifications.",
+    "status": "TODO",
+    "priority": "MEDIUM",
+    "reporterId": "647f0f0b4d00000000000002",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-05T10:00:00Z"
+  },
+  {
+    "title": "Security Audit",
+    "description": "Perform a penetration test.",
+    "status": "TODO",
+    "priority": "HIGH",
+    "reporterId": "647f0f0b4d00000000000001",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-06T10:00:00Z"
+  },
+  {
+    "title": "Profile Page Bug",
+    "description": "Images not loading correctly.",
+    "status": "IN_PROGRESS",
+    "priority": "LOW",
+    "reporterId": "647f0f0b4d00000000000002",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-07T10:00:00Z"
+  },
+  {
+    "title": "Dark Mode Support",
+    "description": "Implement theme switching.",
+    "status": "DONE",
+    "priority": "MEDIUM",
+    "reporterId": "647f0f0b4d00000000000001",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-08T10:00:00Z"
+  },
+  {
+    "title": "Email Notifications",
+    "description": "Send email on ticket assignment.",
+    "status": "TODO",
+    "priority": "HIGH",
+    "reporterId": "647f0f0b4d00000000000002",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-09T10:00:00Z"
+  },
+  {
+    "title": "Mobile Responsiveness",
+    "description": "Fix layout on smaller screens.",
+    "status": "TODO",
+    "priority": "MEDIUM",
+    "reporterId": "647f0f0b4d00000000000001",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-10T10:00:00Z"
+  },
+  {
+    "title": "Refactor Backend Utils",
+    "description": "Clean up utility functions.",
+    "status": "DONE",
+    "priority": "LOW",
+    "reporterId": "647f0f0b4d00000000000002",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-11T10:00:00Z"
+  },
+  {
+    "title": "Add Search to Dashboard",
+    "description": "Allow searching tickets by title.",
+    "status": "IN_PROGRESS",
+    "priority": "HIGH",
+    "reporterId": "647f0f0b4d00000000000001",
+    "teamId": "647f0f0b4d00000000000101",
+    "createdAt": "2026-03-12T10:00:00Z"
+  }
+]

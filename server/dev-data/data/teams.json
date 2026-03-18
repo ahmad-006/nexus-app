@@ -1,0 +1,17 @@
+[
+  {
+    "_id": "647f0f0b4d00000000000101",
+    "name": "Team Alpha",
+    "ownerId": "647f0f0b4d00000000000001",
+    "members": [
+      {
+        "role": "admin",
+        "userId": "647f0f0b4d00000000000001"
+      },
+      {
+        "role": "member",
+        "userId": "647f0f0b4d00000000000002"
+      }
+    ]
+  }
+]
