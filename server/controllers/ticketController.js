@@ -2,6 +2,7 @@ import { Team } from "../models/Team.js";
 import { Ticket } from "../models/Ticket.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
+import { APIFeatures } from "../util/apiFeatures.js";
 
 /*
 @desc    Fetch all the tickets belonging to a specific team
@@ -10,7 +11,17 @@ import { AppError } from "../util/appError.js";
 */
 const getTickets = catchAsync(async (req, res, next) => {
   const { teamId } = req.params;
-  const tickets = await Ticket.find({ teamId });
+
+  // 1) EXECUTE QUERY
+  const features = new APIFeatures(Ticket.find({ teamId }), req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .paginate();
+
+  const tickets = await features.query;
+
+  // 2) SEND RESPONSE
   res.status(200).json({
     status: "success",
     results: tickets.length,
