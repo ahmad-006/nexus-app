@@ -3,8 +3,8 @@ import cors from "cors";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
-import mongoSanitize from "express-mongo-sanitize";
-import xss from "xss-clean";
+// import mongoSanitize from "express-mongo-sanitize";
+// import xss from "xss-clean";
 import cookieParser from "cookie-parser";
 
 // DB connection
@@ -30,17 +30,22 @@ const app = express();
 //Set security headers
 app.use(helmet());
 
-//data sanitization against NOSQL queries
-app.use(mongoSanitize());
-
-//data sanitization against XSS
-app.use(xss());
-
 //cors
 app.use(cors());
 
 //morgan for logging all the requests server receives
 if (process.env.NODE_ENV === "development") app.use(morgan("dev"));
+
+//req.body parser
+app.use(express.json({ limit: "10kb" }));
+//req.cookie parsing
+app.use(cookieParser());
+
+//data sanitization against NOSQL queries
+// app.use(mongoSanitize());
+
+//data sanitization against XSS
+// app.use(xss());
 
 //request limiting so that 100 api requests are allowed in an hour
 const limiter = rateLimit({
@@ -49,11 +54,6 @@ const limiter = rateLimit({
   message: "Too many requests from this IP, please try again in an hour!",
 });
 app.use("/api", limiter);
-
-//req.body parser
-app.use(express.json());
-//req.cookie parsing
-app.use(cookieParser());
 
 //Routes
 app.use("/api/teams", teamsRouter);
