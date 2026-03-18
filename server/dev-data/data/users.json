@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "647f0f0b4d00000000000001",
+    "name": "Admin User",
+    "email": "admin@nexus.com",
+    "password": "password123",
+    "teams": [
+      {
+        "teamId": "647f0f0b4d00000000000101",
+        "role": "admin"
+      }
+    ]
+  },
+  {
+    "_id": "647f0f0b4d00000000000002",
+    "name": "Member User",
+    "email": "member@nexus.com",
+    "password": "password123",
+    "teams": [
+      {
+        "teamId": "647f0f0b4d00000000000101",
+        "role": "member"
+      }
+    ]
+  }
+]
