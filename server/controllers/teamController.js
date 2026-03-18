@@ -1,7 +1,11 @@
 import { Team } from "../models/Team.js";
 import { User } from "../models/User.js";
+import { Ticket } from "../models/Ticket.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
+import { sendEmail } from "../util/nodemailer.js";
+import jwt from "jsonwebtoken";
+import { promisify } from "util";
 
 /**
  * @desc    Create a new team
@@ -110,24 +114,76 @@ export const postAddMember = catchAsync(async (req, res, next) => {
   if (isAlreadyMember)
     return next(new AppError("User is already a member of this team", 400));
 
-  // Push the user to the team's member array
-  const updatedTeam = await Team.findByIdAndUpdate(
-    teamId,
-    {
-      $addToSet: { members: { userId, role: "member" } },
-    },
-    { new: true },
-  );
+  //SIgning a jwt token for invitation
+  const token = jwt.sign({ teamId, userId }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
 
-  // Update the user's document to include this team
-  user.teams.push({ teamId, role: "member" });
-  await user.save();
+  //SEND INVITATION EMAIL TO USER
+  await sendEmail({
+    name: user.name.split(" ")[0],
+    email: user.email,
+    token,
+    type: "teamInvite",
+    adminName: req.user.name,
+  });
 
   return res.status(200).json({
     status: "success",
-    data: {
-      updatedTeam,
-    },
+    message: "Invitation email sent",
+  });
+});
+
+/**
+ * @desc    Accept an invitation to join a team
+ * @route   PATCH /api/teams/accept-invite/:token
+ * @access  Public
+ */
+
+export const patchAcceptInvite = catchAsync(async (req, res, next) => {
+  const { token } = req.params;
+  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  const { teamId, userId } = decoded;
+
+  // Ensure the logged-in user is the one invited
+  if (req.user.id !== userId) {
+    return next(
+      new AppError("You are not authorized to accept this invitation", 403),
+    );
+  }
+
+  const user = await User.findById(userId);
+  if (!user) return next(new AppError("User not found", 404));
+
+  const team = await Team.findById(teamId);
+  if (!team) return next(new AppError("Team not found", 404));
+
+  // Check if already a member
+  const isAlreadyMember = team.members.some(
+    (member) => member.userId.toString() === userId.toString(),
+  );
+  if (isAlreadyMember) {
+    return res
+      .status(200)
+      .json({ status: "success", message: "Already a member" });
+  }
+
+  team.members.push({ userId, role: "member" });
+  await team.save();
+
+  user.teams.push({ teamId, role: "member" });
+  await user.save();
+
+  await sendEmail({
+    name: user.name.split(" ")[0],
+    email: user.email,
+    type: "teamJoined",
+    ticketTitle: team.name, // Using ticketTitle as team name placeholder
+  });
+
+  return res.status(200).json({
+    status: "success",
+    message: "Team joined successfully",
   });
 });
 
@@ -167,6 +223,16 @@ export const deleteMember = catchAsync(async (req, res, next) => {
     { _id: userId, "teams.teamId": teamId },
     { $pull: { teams: { teamId } } },
   );
+
+  const removedUser = await User.findById(userId);
+  if (removedUser) {
+    await sendEmail({
+      name: removedUser.name.split(" ")[0],
+      email: removedUser.email,
+      type: "teamRemoved",
+      ticketTitle: team.name,
+    });
+  }
 
   return res.status(200).json({
     status: "success",
