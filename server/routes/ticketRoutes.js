@@ -7,6 +7,7 @@ import {
   getTicket,
   patchTicketStatus,
   assignToUser,
+  getStats,
 } from "../controllers/ticketController.js";
 import {
   isMember,
@@ -78,5 +79,8 @@ ticketRouter
     validate,
     assignToUser,
   );
+
+//getting stats
+ticketRouter.route("/team/stats/:teamId").get(protect, getStats);
 
 export { ticketRouter };
