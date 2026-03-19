@@ -17,8 +17,13 @@ import {
 import { ticketValidation } from "../middleware/validator.js";
 import { validate } from "../middleware/validate.js";
 import { protect } from "../controllers/authController.js";
+import { commentRouter } from "./commentRoutes.js";
 
 const ticketRouter = express.Router();
+
+// Mounting comment router for nested routes: /api/tickets/:ticketId/comments
+ticketRouter.use("/:ticketId/comments", commentRouter);
+
 const ticketUpdateValidation = [
   ticketValidation.title,
   ticketValidation.description,
@@ -40,6 +45,9 @@ ticketRouter
   .route("/team/:teamId")
   .get(protect, isMember, getTickets)
   .post(protect, isMember, ticketUpdateValidation, validate, postTicket);
+
+// Get ticket stats for a specific team
+ticketRouter.route("/team/:teamId/stats").get(protect, isMember, getStats);
 
 /*
   Getting a ticket 
@@ -79,8 +87,5 @@ ticketRouter
     validate,
     assignToUser,
   );
-
-//getting stats
-ticketRouter.route("/team/stats/:teamId").get(protect, getStats);
 
 export { ticketRouter };
