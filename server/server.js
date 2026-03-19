@@ -15,6 +15,7 @@ import { ticketRouter } from "./routes/ticketRoutes.js";
 import { teamsRouter } from "./routes/teamRoutes.js";
 import { userRouter } from "./routes/userRoutes.js";
 import { authRouter } from "./routes/authRoutes.js";
+import { commentRouter } from "./routes/commentRoutes.js";
 import { globalErrorHandler } from "./controllers/errorController.js";
 import { AppError } from "./util/appError.js";
 //handling uncaught exceptions......
@@ -60,6 +61,7 @@ app.use("/api/teams", teamsRouter);
 app.use("/api/tickets", ticketRouter);
 app.use("/api/users", userRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/comments", commentRouter);
 
 app.all(/.*/, (req, res, next) => {
   const error = new AppError(
