@@ -1,6 +1,7 @@
 import { Team } from "../models/Team.js";
 import { Ticket } from "../models/Ticket.js";
 import { User } from "../models/User.js";
+import { Comment } from "../models/Comments.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 import { APIFeatures } from "../util/apiFeatures.js";
@@ -174,6 +175,14 @@ const patchTicketStatus = catchAsync(async (req, res, next) => {
     new: true,
   });
 
+  // LOG SYSTEM HISTORY
+  await Comment.create({
+    ticketId,
+    authorId: req.user.id,
+    type: "system",
+    text: `changed status from ${currentStatus} to ${newStatus}`,
+  });
+
   // SEND EMAIL NOTIFICATION (Non-blocking)
   // Fetch the reporter's email to notify them of the change
   const reporter = await User.findById(oldTicket.reporterId);
@@ -239,6 +248,18 @@ const assignToUser = catchAsync(async (req, res, next) => {
     { assigneeId },
     { new: true },
   );
+
+  // LOG SYSTEM HISTORY
+  const assigneeName = assigneeId
+    ? (await User.findById(assigneeId))?.name || "Unknown User"
+    : "None";
+
+  await Comment.create({
+    ticketId,
+    authorId: req.user.id,
+    type: "system",
+    text: `assigned this ticket to: ${assigneeName}`,
+  });
 
   // SEND EMAIL NOTIFICATION
   const assignee = await User.findById(assigneeId);
