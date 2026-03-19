@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { Comment } from "../models/Comments.js";
+import { Comment } from "../models/Comment.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 
