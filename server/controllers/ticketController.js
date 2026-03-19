@@ -1,7 +1,7 @@
 import { Team } from "../models/Team.js";
 import { Ticket } from "../models/Ticket.js";
 import { User } from "../models/User.js";
-import { Comment } from "../models/Comments.js";
+import { Comment } from "../models/Comment.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 import { APIFeatures } from "../util/apiFeatures.js";
