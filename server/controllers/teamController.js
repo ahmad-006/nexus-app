@@ -242,12 +242,11 @@ export const deleteMember = catchAsync(async (req, res, next) => {
   });
 });
 
-/*
-@desc    Fetch all the tickets belonging to a specific team
-@route   GET /api/teams/:teamId/tickets
-@access  Private (Admin)  
-*/
-
+/**
+ * @desc    Delete an entire team and all its tickets
+ * @route   DELETE /api/teams/:teamId
+ * @access  Private (Owner Only)
+ */
 export const deleteTeam = catchAsync(async (req, res, next) => {
   const { teamId } = req.params;
 
