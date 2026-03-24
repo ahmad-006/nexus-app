@@ -6,7 +6,10 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 
 // DB connection
-import { mongooseConnect } from "./util/database";
+import { mongooseConnect } from "./util/database.js";
+
+// Socket Manager
+import { socketManager } from "./util/socket.js";
 
 //routes
 import { ticketRouter } from "./routes/ticketRoutes.js";
@@ -32,7 +35,12 @@ const app = express();
 app.use(helmet());
 
 //cors
-app.use(cors());
+const corsOptions = {
+  origin: [process.env.FRONTEND_URL, "http://localhost:5173", "http://localhost:8000"],
+  methods: ["GET", "POST", "PATCH", "DELETE"],
+  credentials: true,
+};
+app.use(cors(corsOptions));
 
 //morgan for logging all the requests server receives
 if (process.env.NODE_ENV === "development") app.use(morgan("dev"));
@@ -76,6 +84,8 @@ let server;
 //connecting DB and then starting the server
 mongooseConnect(() => {
   server = app.listen(8000);
+  // Initialize Socket.io after the server starts listening
+  socketManager.init(server);
 });
 
 process.on("unhandledRejection", (err) => {
