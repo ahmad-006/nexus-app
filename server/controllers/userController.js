@@ -48,7 +48,7 @@ export const getUserById = catchAsync(async (req, res, next) => {
 });
 
 /**
- * @desc    Update current user profile
+ * @desc    Update current user profile info (name/image)
  * @route   PATCH /api/users/me
  * @access  Private
  */
@@ -66,7 +66,7 @@ export const patchUserProfile = catchAsync(async (req, res) => {
 });
 
 /**
- * @desc    Delete current user account
+ * @desc    Delete current user account and clean up memberships/tickets
  * @route   DELETE /api/users/me
  * @access  Private
  */
@@ -105,7 +105,7 @@ export const getTickets = catchAsync(async (req, res, next) => {
 });
 
 /**
- * @desc    Upload profile image for current user
+ * @desc    Upload and update profile image for current user via ImageKit
  * @route   POST /api/users/me/image
  * @access  Private
  */

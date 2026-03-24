@@ -3,6 +3,11 @@ import { Comment } from "../models/Comment.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 
+/**
+ * @desc    Get all top-level comments for a specific ticket
+ * @route   GET /api/tickets/:ticketId/comments
+ * @access  Private (Member)
+ */
 export const getComments = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
 
@@ -61,6 +66,12 @@ export const getComments = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+/**
+ * @desc    Post a comment or reply to a ticket
+ * @route   POST /api/tickets/:ticketId/comments
+ * @access  Private (Member)
+ */
 export const postComment = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
   const { text, commentId } = req.body;
@@ -81,6 +92,12 @@ export const postComment = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+/**
+ * @desc    Update a specific comment
+ * @route   PATCH /api/comments/:commentId
+ * @access  Private (Author)
+ */
 export const patchComment = catchAsync(async (req, res, next) => {
   const { commentId } = req.params;
   const { text } = req.body;
@@ -103,6 +120,12 @@ export const patchComment = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+/**
+ * @desc    Delete a specific comment
+ * @route   DELETE /api/comments/:commentId
+ * @access  Private (Author)
+ */
 export const deleteComment = catchAsync(async (req, res, next) => {
   const { commentId } = req.params;
 
@@ -116,6 +139,12 @@ export const deleteComment = catchAsync(async (req, res, next) => {
 
   return res.status(204).json({ status: "success", data: null });
 });
+
+/**
+ * @desc    Get all replies for a specific comment (threaded)
+ * @route   GET /api/comments/:commentId/replies
+ * @access  Private (Member)
+ */
 export const getReplies = catchAsync(async (req, res, next) => {
   const { commentId } = req.params;
   if (!commentId) return next(new AppError("commentId is required", 400));
