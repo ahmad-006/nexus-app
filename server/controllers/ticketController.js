@@ -7,12 +7,13 @@ import { AppError } from "../util/appError.js";
 import { APIFeatures } from "../util/apiFeatures.js";
 import { sendEmail } from "../util/nodemailer.js";
 import { Types } from "mongoose";
+import { socketManager } from "../util/socket.js";
 
-/*
-@desc    Fetch all the tickets belonging to a specific team
-@route   GET /api/tickets/team/:teamId
-@access  Private (Member)  
-*/
+/**
+ * @desc    Fetch all the tickets belonging to a specific team
+ * @route   GET /api/tickets/team/:teamId
+ * @access  Private (Member)
+ */
 const getTickets = catchAsync(async (req, res, next) => {
   const { teamId } = req.params;
 
@@ -35,12 +36,11 @@ const getTickets = catchAsync(async (req, res, next) => {
   });
 });
 
-/*
-@desc    Fetch a single ticket by ID
-@route   GET /api/tickets/:ticketId
-@access  Public 
-*/
-
+/**
+ * @desc    Fetch a single ticket by ID
+ * @route   GET /api/tickets/:ticketId
+ * @access  Public
+ */
 const getTicket = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
 
@@ -55,12 +55,11 @@ const getTicket = catchAsync(async (req, res, next) => {
   });
 });
 
-/*
-@desc    create a ticket in the specific team
-@route   POST /api/tickets/team/:teamId
-@access  Private (Member or Admin)  
-*/
-
+/**
+ * @desc    create a ticket in the specific team
+ * @route   POST /api/tickets/team/:teamId
+ * @access  Private (Member or Admin)
+ */
 const postTicket = catchAsync(async (req, res, next) => {
   const { title, description, priority } = req.body;
   const { teamId } = req.params;
@@ -79,6 +78,13 @@ const postTicket = catchAsync(async (req, res, next) => {
   });
   const savedTicket = await ticket.save();
 
+  // --- REAL-TIME EMISSION ---
+  const io = socketManager.getIO();
+  io.to(`team_${teamId}`).emit("ticket_created", {
+    ticket: savedTicket,
+    createdBy: req.user.name,
+  });
+
   res.status(201).json({
     status: "success",
     data: {
@@ -87,11 +93,11 @@ const postTicket = catchAsync(async (req, res, next) => {
   });
 });
 
-/*
-@desc    Update a specific ticket by ID
-@route   PATCH /api/tickets/:ticketId
-@access  Private (Admin or Reporter)
-*/
+/**
+ * @desc    Update a specific ticket by ID
+ * @route   PATCH /api/tickets/:ticketId
+ * @access  Private (Admin or Reporter)
+ */
 const patchTicket = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
   const { title, description, priority } = req.body;
@@ -126,12 +132,11 @@ const patchTicket = catchAsync(async (req, res, next) => {
   });
 });
 
-/*
-@desc    Fetch all the tickets belonging to a specific team
-@route   PATCH /api/tickets/team/:ticketId/status
-@access  Private (Member)  
-*/
-
+/**
+ * @desc    Fetch all the tickets belonging to a specific team
+ * @route   PATCH /api/tickets/team/:ticketId/status
+ * @access  Private (Member)
+ */
 const patchTicketStatus = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
   const { status: newStatus } = req.body;
@@ -184,7 +189,6 @@ const patchTicketStatus = catchAsync(async (req, res, next) => {
   });
 
   // SEND EMAIL NOTIFICATION (Non-blocking)
-  // Fetch the reporter's email to notify them of the change
   const reporter = await User.findById(oldTicket.reporterId);
   if (reporter) {
     sendEmail({
@@ -193,8 +197,19 @@ const patchTicketStatus = catchAsync(async (req, res, next) => {
       type: "statusUpdate",
       ticketTitle: oldTicket.title,
       status: newStatus,
-    }).catch((err) => console.error("Status Update Email Failed:", err.message));
+    }).catch((err) =>
+      console.error("Status Update Email Failed:", err.message),
+    );
   }
+
+  // --- REAL-TIME EMISSION ---
+  const io = socketManager.getIO();
+  io.to(`team_${oldTicket.teamId.toString()}`).emit("ticket_status_updated", {
+    ticketId: updateTicket._id,
+    newStatus: updateTicket.status,
+    updatedBy: req.user.name,
+    title: updateTicket.title,
+  });
 
   //sending response
   return res.status(200).json({
@@ -205,11 +220,11 @@ const patchTicketStatus = catchAsync(async (req, res, next) => {
   });
 });
 
-/*
-@desc    Assigning the ticket to user
-@route   PATCH /api/tickets/:ticketId/assign
-@access  Private (Admin)  
-*/
+/**
+ * @desc    Assigning the ticket to user
+ * @route   PATCH /api/tickets/:ticketId/assign
+ * @access  Private (Admin)
+ */
 const assignToUser = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
   const { assigneeId } = req.body;
@@ -274,32 +289,52 @@ const assignToUser = catchAsync(async (req, res, next) => {
     }).catch((err) => console.error("Assignment Email Failed:", err.message));
   }
 
+  // --- REAL-TIME EMISSION ---
+  const io = socketManager.getIO();
+  io.to(`team_${ticket.teamId.toString()}`).emit("ticket_assigned", {
+    ticketId: response._id,
+    assigneeId,
+    assigneeName,
+    title: ticket.title,
+  });
+
   return res
     .status(200)
     .json({ status: "success", data: { ticket: response } });
 });
 
-/*
-@desc    Deleting a ticket by Id
-@route   DELETE /api/tickets/:ticketId
-@access  Private (Admin)  
-*/
+/**
+ * @desc    Deleting a ticket by Id
+ * @route   DELETE /api/tickets/:ticketId
+ * @access  Private (Admin)
+ */
 const deleteTicket = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
+
+  // We need to find the ticket first to get the teamId for the socket emission
+  const ticket = await Ticket.findById(ticketId);
+  if (!ticket) return next(new AppError("Ticket not found", 404));
+
+  const teamId = ticket.teamId.toString();
+
   //deleting the ticket
-  const result = await Ticket.findByIdAndDelete(ticketId);
-  //throwing an error if there is no ticket
-  if (!result) return next(new AppError("Ticket not found", 404));
+  await Ticket.findByIdAndDelete(ticketId);
+
+  // --- REAL-TIME EMISSION ---
+  const io = socketManager.getIO();
+  io.to(`team_${teamId}`).emit("ticket_deleted", {
+    ticketId,
+  });
+
   //sending the response
   res.status(204).json({ status: "success", data: null });
 });
 
-/*
-@desc    Fetch all the stats of tickets belonging to a specific team
-@route   GET /api/tickets/team/:teamId/stats
-@access  Private (Member)  
-*/
-
+/**
+ * @desc    Fetch all the stats of tickets belonging to a specific team
+ * @route   GET /api/tickets/team/:teamId/stats
+ * @access  Private (Member)
+ */
 const getStats = catchAsync(async (req, res, next) => {
   const { teamId } = req.params;
   const stats = await Ticket.aggregate([
@@ -358,6 +393,7 @@ const getStats = catchAsync(async (req, res, next) => {
     },
   });
 });
+
 export {
   getTicket,
   getTickets,
