@@ -3,8 +3,6 @@ import cors from "cors";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
-// import mongoSanitize from "express-mongo-sanitize";
-// import xss from "xss-clean";
 import cookieParser from "cookie-parser";
 
 // DB connection
@@ -18,6 +16,8 @@ import { authRouter } from "./routes/authRoutes.js";
 import { commentRouter } from "./routes/commentRoutes.js";
 import { globalErrorHandler } from "./controllers/errorController.js";
 import { AppError } from "./util/appError.js";
+import { nexusGuard } from "./util/sanitize.js";
+
 //handling uncaught exceptions......
 process.on("uncaughtException", (err) => {
   console.log("UNCAUGHT EXCEPTION! 💥 Shutting down...");
@@ -39,14 +39,12 @@ if (process.env.NODE_ENV === "development") app.use(morgan("dev"));
 
 //req.body parser
 app.use(express.json({ limit: "10kb" }));
+
 //req.cookie parsing
 app.use(cookieParser());
 
-//data sanitization against NOSQL queries
-// app.use(mongoSanitize());
-
-//data sanitization against XSS
-// app.use(xss());
+//NoSQL and XSS sanitization middleware
+app.use(nexusGuard);
 
 //request limiting so that 100 api requests are allowed in an hour
 const limiter = rateLimit({
