@@ -41,7 +41,11 @@ const createSendToken = (user, statusCode, res) => {
   });
 };
 
-//? ROUTE - /api/auth/signup
+/**
+ * @desc    Create new user and send welcome email
+ * @route   POST /api/auth/signup
+ * @access  Public
+ */
 export const postSignUp = catchAsync(async (req, res, next) => {
   //creating new user from the information provided in the req.body
   const newUser = await User.create(req.body);
@@ -57,7 +61,11 @@ export const postSignUp = catchAsync(async (req, res, next) => {
   createSendToken(newUser, 201, res);
 });
 
-//? ROUTE - /api/auth/login
+/**
+ * @desc    Authenticate user and return JWT
+ * @route   POST /api/auth/login
+ * @access  Public
+ */
 export const postLogin = catchAsync(async (req, res, next) => {
   //getting data from request body
   const { email, password } = req.body;
@@ -83,7 +91,11 @@ export const postLogin = catchAsync(async (req, res, next) => {
   createSendToken(user, 200, res);
 });
 
-//?ROUTE - /api/auth/forget-password
+/**
+ * @desc    Request password reset token via email
+ * @route   POST /api/auth/forget-password
+ * @access  Public
+ */
 export const postForgetPassword = catchAsync(async (req, res, next) => {
   //getting email from body
   const { email } = req.body;
@@ -125,7 +137,11 @@ export const postForgetPassword = catchAsync(async (req, res, next) => {
   });
 });
 
-//?ROUTE - /api/auth/reset-password/:token
+/**
+ * @desc    Reset password using token from email
+ * @route   PATCH /api/auth/reset-password/:token
+ * @access  Public
+ */
 export const postResetPassword = catchAsync(async (req, res, next) => {
   //getting password and confirmPassword from body
   const { password, confirmPassword } = req.body;
@@ -167,7 +183,11 @@ export const postResetPassword = catchAsync(async (req, res, next) => {
   createSendToken(user, 200, res);
 });
 
-//?ROUTE - /api/auth/update-password
+/**
+ * @desc    Update logged-in user password
+ * @route   PATCH /api/auth/update-password
+ * @access  Private
+ */
 export const postUpdatePassword = catchAsync(async (req, res, next) => {
   //getting oldPassword, newPassword and confirmPassword from body
   const { oldPassword, newPassword, confirmPassword } = req.body;
@@ -194,6 +214,9 @@ export const postUpdatePassword = catchAsync(async (req, res, next) => {
   createSendToken(user, 200, res);
 });
 
+/**
+ * @desc    Middleware to protect routes using JWT
+ */
 export const protect = catchAsync(async (req, res, next) => {
   let token;
 

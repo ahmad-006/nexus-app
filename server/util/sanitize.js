@@ -32,7 +32,6 @@ export const nexusGuard = (req, res, next) => {
       return obj.map((item) => sanitize(item));
     }
 
-    // XSS Sanitization for direct strings (not in object)
     if (typeof obj === "string") {
       return filterXSS(obj);
     }
@@ -40,10 +39,24 @@ export const nexusGuard = (req, res, next) => {
     return obj;
   };
 
-  // Apply to body, query, and params
-  if (req.body) req.body = sanitize(req.body);
-  if (req.query) req.query = sanitize(req.query);
-  if (req.params) req.params = sanitize(req.params);
+  // BUN-SAFE MUTATION: Update values in-place instead of reassigning the whole object
+  const processObject = (reqObj) => {
+    if (!reqObj) return;
+    const sanitized = sanitize(reqObj);
+
+    // Clear keys starting with $ and update others
+    Object.keys(reqObj).forEach((key) => {
+      if (key.startsWith("$")) {
+        delete reqObj[key];
+      } else {
+        reqObj[key] = sanitized[key];
+      }
+    });
+  };
+
+  processObject(req.body);
+  processObject(req.query);
+  processObject(req.params);
 
   next();
 };
