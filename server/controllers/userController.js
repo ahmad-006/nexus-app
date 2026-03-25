@@ -26,7 +26,10 @@ export const getTeams = catchAsync(async (req, res, next) => {
   const userId = req.user.id;
 
   // Find teams where the user is listed in the members array
-  const teams = await Team.find({ "members.userId": userId });
+  const teams = await Team.find({ "members.userId": userId }).populate(
+    "members.userId",
+    "name image email",
+  );
   if (teams.length === 0) return next(new AppError("No teams found", 404));
 
   return res.status(200).json({ status: "success", data: { teams } });
