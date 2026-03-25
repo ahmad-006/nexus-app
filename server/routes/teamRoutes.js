@@ -6,6 +6,7 @@ import {
   postAddMember,
   postCreateTeam,
   deleteTeam,
+  getTeam,
 } from "../controllers/teamController.js";
 import { isMember, restrictTo } from "../middleware/role-check.js";
 import { teamValidation } from "../middleware/validator.js";
@@ -25,7 +26,7 @@ teamsRouter.route("/").post([teamValidation.name], validate, postCreateTeam);
 
 // 4) DYNAMIC TEAM ROUTES (Member restricted)
 
-teamsRouter.route("/:teamId").delete(deleteTeam);
+teamsRouter.route("/:teamId").get(isMember, getTeam).delete(deleteTeam);
 
 teamsRouter
   .route("/:teamId/members/:userId")
