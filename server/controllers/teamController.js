@@ -267,3 +267,27 @@ export const deleteTeam = catchAsync(async (req, res, next) => {
 
   return res.status(204).json({ status: "success", data: null });
 });
+
+/**
+ * @desc    Get a specific team by ID with populated members
+ * @route   GET /api/teams/:teamId
+ * @access  Private (Member)
+ */
+export const getTeam = catchAsync(async (req, res, next) => {
+  const { teamId } = req.params;
+
+  const team = await Team.findById(teamId).populate(
+    "members.userId",
+    "name email image",
+  );
+
+  if (!team) return next(new AppError("Team not found", 404));
+
+  return res.status(200).json({
+    status: "success",
+    data: {
+      team,
+    },
+  });
+});
+
