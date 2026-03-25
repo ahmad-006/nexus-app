@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import { User } from "../models/User.js";
+import { Message } from "../models/Message.js";
 import { promisify } from "util";
 import { catchAsync } from "./catchAsync.js";
 import { AppError } from "./appError.js";
@@ -67,6 +68,13 @@ export const socketManager = {
         });
       }
 
+      // 6. AUTO-JOIN PRIVATE CHAT ROOM
+      if (socket.user.id) {
+        const roomName = `user_${socket.user.id}`;
+        socket.join(roomName);
+        console.log(`User ${socket.user.name} joined room: ${roomName}`);
+      }
+
       // --- TEAM CHAT LOGIC ---
       /**
        * @event send_team_message
@@ -97,14 +105,43 @@ export const socketManager = {
         console.log(`Chat in ${roomName}: ${socket.user.name} -> ${message}`);
       });
 
+      socket.on("send_private_message", async (data) => {
+        const { receiverId, message } = data;
+        if (!receiverId || !message) return;
+
+        // 1. Persistence (Save to Database)
+        const savedMessage = await Message.create({
+          senderId: socket.user._id,
+          receiverId,
+          message,
+        });
+
+        // 2. Identify Rooms (Target both for multi-device sync)
+        const receiverRoom = `user_${receiverId}`;
+        const senderRoom = `user_${socket.user._id}`;
+
+        // 3. Emit Full Payload to Both
+        io.to(receiverRoom).to(senderRoom).emit("receive_private_message", {
+          _id: savedMessage._id,
+          senderId: socket.user._id,
+          senderName: socket.user.name,
+          message: savedMessage.message,
+          timestamp: savedMessage.createdAt,
+        });
+
+        console.log(
+          `Private: ${socket.user.name} -> User(${receiverId}): ${message}`
+        );
+      });
+
       socket.on("disconnect", () => {
         console.log(`User disconnected: ${socket.user.name}`);
       });
     });
 
     console.log("Socket.io Initialized successfully........!");
-    return io;
-  },
+      return io;
+    },
 
   /**
    * Get the initialized IO instance
