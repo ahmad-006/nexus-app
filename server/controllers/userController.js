@@ -18,21 +18,32 @@ export const getUser = catchAsync(async (req, res, next) => {
 });
 
 /**
+ * @desc    Get all users (Operatives)
+ * @route   GET /api/users
+ * @access  Private
+ */
+export const getAllUsers = catchAsync(async (req, res, next) => {
+  const users = await User.find().select("-password");
+  return res.status(200).json({ status: "success", data: { users } });
+});
+
+/**
  * @desc    Get all teams for the current user
  * @route   GET /api/users/me/teams
  * @access  Private
  */
 export const getTeams = catchAsync(async (req, res, next) => {
-  const userId = req.user.id;
+  const user = await User.findById(req.user.id).populate({
+    path: "teams",
+    populate: {
+      path: "members.userId",
+      select: "name image email",
+    },
+  });
 
-  // Find teams where the user is listed in the members array
-  const teams = await Team.find({ "members.userId": userId }).populate(
-    "members.userId",
-    "name image email",
-  );
-  if (teams.length === 0) return next(new AppError("No teams found", 404));
-
-  return res.status(200).json({ status: "success", data: { teams } });
+  return res
+    .status(200)
+    .json({ status: "success", data: { teams: user.teams } });
 });
 
 /**

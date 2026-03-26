@@ -8,6 +8,7 @@ import {
   getTickets,
   uploadImage,
   postImage,
+  getAllUsers,
 } from "../controllers/userController.js";
 import { validate } from "../middleware/validate.js";
 import { userValidation } from "../middleware/validator.js";
@@ -17,6 +18,8 @@ const userRouter = express.Router();
 
 // Apply protect to all user routes
 userRouter.use(protect);
+
+userRouter.get("/", getAllUsers);
 
 userRouter
   .route("/me")
