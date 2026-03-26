@@ -19,26 +19,15 @@ const userSchema = new Schema(
       select: false,
     },
     image: String,
-    teams: [
-      {
-        _id: false,
-        teamId: {
-          type: Types.ObjectId,
-          ref: "Team",
-          required: true,
-        },
-        role: {
-          type: String,
-          enum: ["admin", "member"],
-          default: "member",
-        },
-      },
-    ],
     passwordChangedAt: Date,
     resetToken: String,
     resetTokenExpiration: Date,
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  },
 );
 
 userSchema.methods.isCorrectPassword = async function (
@@ -76,6 +65,13 @@ userSchema.pre("save", function (next) {
   if (!this.isModified("password") || this.isNew) return;
 
   this.passwordChangedAt = Date.now() - 1000;
+});
+
+userSchema.virtual("teams", {
+  ref: "Team",
+  localField: "_id",
+  foreignField: "members.userId",
+  justOne: false,
 });
 
 export const User = mongoose.model("User", userSchema);
