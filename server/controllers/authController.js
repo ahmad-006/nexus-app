@@ -235,10 +235,15 @@ export const protect = catchAsync(async (req, res, next) => {
   }
 
   // 2) decoding the token
-  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  let decoded;
+  try {
+    decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  } catch (err) {
+    return next(new AppError("Invalid or malformed token. Please login again.", 401));
+  }
 
   // 3) check whether the user still exists
-  const currentUser = await User.findById(decoded.id);
+  const currentUser = await User.findById(decoded.id).populate("teams");
   if (!currentUser) {
     return next(new AppError("User no longer exists", 401));
   }
