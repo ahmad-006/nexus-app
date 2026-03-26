@@ -11,6 +11,37 @@
       {
         "role": "member",
         "userId": "647f0f0b4d00000000000002"
+      },
+      {
+        "role": "member",
+        "userId": "647f0f0b4d00000000000003"
+      },
+      {
+        "role": "member",
+        "userId": "647f0f0b4d00000000000004"
+      },
+      {
+        "role": "member",
+        "userId": "647f0f0b4d00000000000005"
+      }
+    ]
+  },
+  {
+    "_id": "647f0f0b4d00000000000102",
+    "name": "Team Beta",
+    "ownerId": "647f0f0b4d00000000000006",
+    "members": [
+      {
+        "role": "admin",
+        "userId": "647f0f0b4d00000000000006"
+      },
+      {
+        "role": "member",
+        "userId": "647f0f0b4d00000000000007"
+      },
+      {
+        "role": "member",
+        "userId": "647f0f0b4d00000000000002"
       }
     ]
   }

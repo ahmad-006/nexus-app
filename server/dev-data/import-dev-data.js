@@ -14,10 +14,16 @@ dotenv.config({ path: "./.env" });
 
 const DB = process.env.MONGODB_URI;
 
-mongoose
-  .connect(DB)
-  .then(() => console.log("DB connection successful!"))
-  .catch((err) => console.log("DB connection error: ", err));
+// CONNECT TO DB
+const connectDB = async () => {
+  try {
+    await mongoose.connect(DB);
+    console.log("DB connection successful!");
+  } catch (err) {
+    console.log("DB connection error: ", err);
+    process.exit(1);
+  }
+};
 
 // READ JSON FILES
 const users = JSON.parse(
@@ -32,6 +38,7 @@ const tickets = JSON.parse(
 
 // IMPORT DATA INTO DB
 const importData = async () => {
+  await connectDB();
   try {
     await User.create(users, { validateBeforeSave: false });
     await Team.create(teams);
@@ -45,6 +52,7 @@ const importData = async () => {
 
 // DELETE ALL DATA FROM DB
 const deleteData = async () => {
+  await connectDB();
   try {
     await User.deleteMany();
     await Team.deleteMany();
