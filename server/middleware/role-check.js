@@ -23,19 +23,30 @@ const isMember = catchAsync(async (req, res, next) => {
     return next(new AppError("Team context is required for this action", 400));
   }
 
-  // 3) Find the team in the user's teams array (In-Memory!)
-  const userTeam = teams.find(
-    (team) => team.teamId.toString() === teamId.toString(),
+  // 3) Find the team in the user's teams array (In-Memory from populated virtuals!)
+  const teamDoc = teams.find(
+    (team) => team._id.toString() === teamId.toString(),
   );
 
-  if (!userTeam) {
+  if (!teamDoc) {
     return next(
       new AppError("Access Denied! You are not a member of this team.", 403),
     );
   }
 
-  // 4) Attach the role to the request for the next middleware (e.g., restrictTo)
-  req.teamRole = userTeam.role;
+  // 4) Extract the user's specific role from that team's members list
+  const membership = teamDoc.members.find(
+    (m) => m.userId.toString() === req.user.id.toString(),
+  );
+
+  if (!membership) {
+    return next(
+      new AppError("Membership integrity error. Please contact admin.", 500),
+    );
+  }
+
+  // 5) Attach the role to the request for the next middleware (e.g., restrictTo)
+  req.teamRole = membership.role;
   next();
 });
 
