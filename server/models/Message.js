@@ -7,9 +7,15 @@ const messageSchema = new Schema(
       ref: "User",
       required: true,
     },
+    // Optional for Team messages
     receiverId: {
       type: Schema.Types.ObjectId,
       ref: "User",
+    },
+
+    teamId: {
+      type: Schema.Types.ObjectId,
+      ref: "Team",
       required: true,
     },
     message: {

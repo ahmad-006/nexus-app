@@ -4,12 +4,33 @@ import { AppError } from "../util/appError.js";
 import { socketManager } from "../util/socket.js";
 
 /**
+ * @desc    Get all messages for a specific team
+ * @route   GET /api/messages/team/:teamId
+ * @access  Private
+ */
+export const getMessagesByTeam = catchAsync(async (req, res, next) => {
+  const { teamId } = req.params;
+
+  const messages = await Message.find({ teamId })
+    .populate("senderId", "name image email")
+    .sort({ createdAt: 1 });
+
+  res.status(200).json({
+    status: "success",
+    results: messages.length,
+    data: {
+      messages,
+    },
+  });
+});
+
+/**
  * @desc    Get all private messages between two users
  * @route   GET /api/messages/:otherUserId
  * @access  Private
  */
 export const getMessagesByUsers = catchAsync(async (req, res) => {
-  const { otherUserId } = req.params;
+  const { otherUserId, teamId } = req.params;
   const { id: userId } = req.user;
 
   const messages = await Message.find({
@@ -17,6 +38,7 @@ export const getMessagesByUsers = catchAsync(async (req, res) => {
       { senderId: userId, receiverId: otherUserId },
       { senderId: otherUserId, receiverId: userId },
     ],
+    teamId,
   }).sort({ createdAt: 1 });
 
   res.status(200).json({
@@ -37,7 +59,7 @@ export const readAllMessages = catchAsync(async (req, res) => {
   const { senderId } = req.params;
   const { id: receiverId } = req.user;
 
-  // 1. Bulk Update in Database
+  // 1. ALL Messages are read at once
   await Message.updateMany(
     { senderId, receiverId, isRead: false },
     { $set: { isRead: true } },
