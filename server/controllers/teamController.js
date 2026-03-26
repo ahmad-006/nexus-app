@@ -25,9 +25,6 @@ export const postCreateTeam = catchAsync(async (req, res, next) => {
   });
   await team.save();
 
-  req.user.teams.push({ teamId: team._id, role: "admin" });
-  await req.user.save();
-
   return res.status(200).json({
     status: "success",
     data: {
@@ -74,12 +71,6 @@ export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
     teamId,
     { members: updatedMembers },
     { new: true },
-  );
-
-  // Update the user's role for this specific team in the User model
-  await User.updateOne(
-    { _id: userId, "teams.teamId": teamId },
-    { $set: { "teams.$.role": "admin" } },
   );
 
   return res.status(200).json({
@@ -145,18 +136,11 @@ export const patchAcceptInvite = catchAsync(async (req, res, next) => {
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
   const { teamId, userId } = decoded;
 
-  // Ensure the logged-in user is the one invited
-  if (req.user.id !== userId) {
-    return next(
-      new AppError("You are not authorized to accept this invitation", 403),
-    );
-  }
+  const team = await Team.findById(teamId);
+  if (!team) return next(new AppError("Team not found", 404));
 
   const user = await User.findById(userId);
   if (!user) return next(new AppError("User not found", 404));
-
-  const team = await Team.findById(teamId);
-  if (!team) return next(new AppError("Team not found", 404));
 
   // Check if already a member
   const isAlreadyMember = team.members.some(
@@ -170,9 +154,6 @@ export const patchAcceptInvite = catchAsync(async (req, res, next) => {
 
   team.members.push({ userId, role: "member" });
   await team.save();
-
-  user.teams.push({ teamId, role: "member" });
-  await user.save();
 
   await sendEmail({
     name: user.name.split(" ")[0],
@@ -219,11 +200,6 @@ export const deleteMember = catchAsync(async (req, res, next) => {
     { new: true },
   );
 
-  await User.updateOne(
-    { _id: userId, "teams.teamId": teamId },
-    { $pull: { teams: { teamId } } },
-  );
-
   const removedUser = await User.findById(userId);
   if (removedUser) {
     await sendEmail({
@@ -258,10 +234,6 @@ export const deleteTeam = catchAsync(async (req, res, next) => {
     return next(new AppError("You are not the owner of this team", 403));
   }
 
-  await User.updateMany(
-    { "teams.teamId": teamId },
-    { $pull: { teams: { teamId } } },
-  );
   await Ticket.deleteMany({ teamId });
   await Team.findByIdAndDelete(teamId);
 
@@ -290,4 +262,3 @@ export const getTeam = catchAsync(async (req, res, next) => {
     },
   });
 });
-
