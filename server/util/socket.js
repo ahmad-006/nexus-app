@@ -38,12 +38,19 @@ export const socketManager = {
           );
         }
 
-        const decoded = await promisify(jwt.verify)(
-          token,
-          process.env.JWT_SECRET,
-        );
+        let decoded;
+        try {
+          decoded = await promisify(jwt.verify)(
+            token,
+            process.env.JWT_SECRET,
+          );
+        } catch (err) {
+          return next(
+            new AppError("Authentication error: Invalid or malformed token", 401),
+          );
+        }
 
-        const currentUser = await User.findById(decoded.id);
+        const currentUser = await User.findById(decoded.id).populate("teams");
         if (!currentUser) {
           return next(
             new AppError("Authentication error: User not found", 401),
@@ -62,7 +69,7 @@ export const socketManager = {
       // 5. AUTO-JOIN TEAM ROOMS
       if (socket.user.teams && socket.user.teams.length > 0) {
         socket.user.teams.forEach((team) => {
-          const roomName = `team_${team.teamId}`;
+          const roomName = `team_${team._id}`;
           socket.join(roomName);
           console.log(`User ${socket.user.name} joined room: ${roomName}`);
         });
@@ -81,39 +88,49 @@ export const socketManager = {
        * @param {Object} data - { teamId, message }
        */
 
-      socket.on("send_team_message", (data) => {
+      socket.on("send_team_message", async (data) => {
         const { teamId, message } = data;
 
         if (!teamId || !message) return;
 
-        // Verify the user is actually in this team before shouting
+        // Verify membership (In-Memory from populated teams)
         const isMember = socket.user.teams.some(
-          (t) => t.teamId.toString() === teamId,
+          (t) => t._id.toString() === teamId,
         );
         if (!isMember) return;
+
+        // PERSIST TO DATABASE
+        const savedMessage = await Message.create({
+          senderId: socket.user._id,
+          teamId: teamId,
+          message: message,
+        });
 
         const roomName = `team_${teamId}`;
 
         // Shout to everyone in the room
         io.to(roomName).emit("receive_team_message", {
+          _id: savedMessage._id,
           senderName: socket.user.name,
           senderId: socket.user._id,
           message: message,
-          timestamp: new Date(),
+          timestamp: savedMessage.createdAt,
+          teamId: teamId
         });
 
         console.log(`Chat in ${roomName}: ${socket.user.name} -> ${message}`);
       });
 
       socket.on("send_private_message", async (data) => {
-        const { receiverId, message } = data;
-        if (!receiverId || !message) return;
+        const { receiverId, message, teamId } = data;
+        if (!receiverId || !message || !teamId) return;
 
-        // 1. Persistence (Save to Database)
+        // 1. Persistence (Save to Database with team context)
         const savedMessage = await Message.create({
           senderId: socket.user._id,
           receiverId,
           message,
+          teamId,
         });
 
         // 2. Identify Rooms (Target both for multi-device sync)
