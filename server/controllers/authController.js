@@ -239,7 +239,9 @@ export const protect = catchAsync(async (req, res, next) => {
   try {
     decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
   } catch (err) {
-    return next(new AppError("Invalid or malformed token. Please login again.", 401));
+    return next(
+      new AppError("Invalid or malformed token. Please login again.", 401),
+    );
   }
 
   // 3) check whether the user still exists
