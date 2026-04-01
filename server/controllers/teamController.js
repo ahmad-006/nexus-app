@@ -6,6 +6,7 @@ import { AppError } from "../util/appError.js";
 import { sendEmail } from "../util/nodemailer.js";
 import jwt from "jsonwebtoken";
 import { promisify } from "util";
+import { logActivity } from "./activityController.js";
 
 /**
  * @desc    Create a new team
@@ -24,6 +25,15 @@ export const postCreateTeam = catchAsync(async (req, res, next) => {
     members: [{ role: "admin", userId: ownerId }],
   });
   await team.save();
+
+  logActivity({
+    userId: ownerId,
+    action: "TEAM_CREATED",
+    resourceType: "Team",
+    resourceId: team._id,
+    teamId: team._id,
+    details: { teamName: name },
+  });
 
   return res.status(200).json({
     status: "success",
@@ -73,6 +83,15 @@ export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
     { new: true },
   );
 
+  logActivity({
+    userId: req.user.id,
+    action: "MEMBER_PROMOTED",
+    resourceType: "Team",
+    resourceId: teamId,
+    teamId,
+    details: { promotedUserId: userId },
+  });
+
   return res.status(200).json({
     status: "success",
     data: {
@@ -106,9 +125,13 @@ export const postAddMember = catchAsync(async (req, res, next) => {
     return next(new AppError("User is already a member of this team", 400));
 
   //SIgning a jwt token for invitation
-  const token = jwt.sign({ teamId, userId }, process.env.JWT_SECRET, {
-    expiresIn: "1d",
-  });
+  const token = jwt.sign(
+    { teamId, userId, inviterId: req.user.id },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "1d",
+    },
+  );
 
   //SEND INVITATION EMAIL TO USER
   await sendEmail({
@@ -134,7 +157,7 @@ export const postAddMember = catchAsync(async (req, res, next) => {
 export const patchAcceptInvite = catchAsync(async (req, res, next) => {
   const { token } = req.params;
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
-  const { teamId, userId } = decoded;
+  const { teamId, userId, inviterId } = decoded;
 
   const team = await Team.findById(teamId);
   if (!team) return next(new AppError("Team not found", 404));
@@ -154,6 +177,15 @@ export const patchAcceptInvite = catchAsync(async (req, res, next) => {
 
   team.members.push({ userId, role: "member" });
   await team.save();
+
+  logActivity({
+    userId: inviterId,
+    action: "MEMBER_ADDED",
+    resourceType: "Team",
+    resourceId: teamId,
+    teamId,
+    details: { addedMember: userId, role: "member" },
+  });
 
   await sendEmail({
     name: user.name.split(" ")[0],
@@ -209,6 +241,18 @@ export const deleteMember = catchAsync(async (req, res, next) => {
       ticketTitle: team.name,
     });
   }
+
+  //LOGGING ACTIVITY
+  logActivity({
+    userId: req.user.id,
+    action: "MEMBER_REMOVED",
+    resourceType: "Team",
+    resourceId: teamId,
+    teamId,
+    details: {
+      removedUserId: userId,
+    },
+  });
 
   return res.status(200).json({
     status: "success",
