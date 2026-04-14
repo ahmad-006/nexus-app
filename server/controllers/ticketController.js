@@ -8,6 +8,7 @@ import { APIFeatures } from "../util/apiFeatures.js";
 import { sendEmail } from "../util/nodemailer.js";
 import { Types } from "mongoose";
 import { socketManager } from "../util/socket.js";
+import { logActivity } from "./activityController.js";
 
 /**
  * @desc    Fetch all the tickets belonging to a specific team
@@ -78,6 +79,20 @@ const postTicket = catchAsync(async (req, res, next) => {
   });
   const savedTicket = await ticket.save();
 
+  //LOGGING ACTIVITY IN THE ACTIVITY LOG
+  logActivity({
+    userId,
+    action: "TICKET_CREATED",
+    resourceType: "Ticket",
+    resourceId: savedTicket._id,
+    teamId,
+    details: {
+      title,
+      description,
+      priority,
+    },
+  });
+
   // --- REAL-TIME EMISSION ---
   const io = socketManager.getIO();
   io.to(`team_${teamId}`).emit("ticket_created", {
@@ -122,6 +137,38 @@ const patchTicket = catchAsync(async (req, res, next) => {
     runValidators: true,
     new: true,
   });
+
+  // --- SPECIFIC LOGGING LOGIC ---
+  // 1. Log Priority Change separately if it occurred
+  if (priority && oldTicket.priority !== updatedTicket.priority) {
+    logActivity({
+      userId: req.user.id,
+      action: "TICKET_PRIORITY_UPDATED",
+      resourceType: "Ticket",
+      resourceId: updatedTicket._id,
+      teamId: oldTicket.teamId,
+      details: {
+        oldPriority: oldTicket.priority,
+        newPriority: updatedTicket.priority,
+      },
+    });
+  }
+
+  // 2. Log Title or Description changes under a general update
+  if (title || description) {
+    logActivity({
+      userId: req.user.id,
+      action: "TICKET_UPDATED",
+      resourceType: "Ticket",
+      resourceId: updatedTicket._id,
+      teamId: oldTicket.teamId,
+      details: {
+        titleChanged: !!title && oldTicket.title !== updatedTicket.title,
+        descriptionChanged:
+          !!description && oldTicket.description !== updatedTicket.description,
+      },
+    });
+  }
 
   //sending the response
   res.status(200).json({
@@ -178,6 +225,19 @@ const patchTicketStatus = catchAsync(async (req, res, next) => {
   const updateTicket = await Ticket.findByIdAndUpdate(ticketId, updatedData, {
     runValidators: true,
     new: true,
+  });
+
+  //LOGGING ACTIVITY
+  logActivity({
+    userId: req.user.id,
+    action: "TICKET_STATUS_UPDATED",
+    resourceType: "Ticket",
+    resourceId: updateTicket._id,
+    teamId: oldTicket.teamId,
+    details: {
+      oldStatus: currentStatus,
+      newStatus,
+    },
   });
 
   // LOG SYSTEM HISTORY
@@ -239,6 +299,19 @@ const assignToUser = catchAsync(async (req, res, next) => {
       { assigneeId: null },
       { new: true },
     );
+
+    //LOGGING SYSTEM ACTIVITY
+    logActivity({
+      userId: req.user.id,
+      action: "TICKET_UNASSIGNED",
+      resourceType: "Ticket",
+      resourceId: updatedTicket._id,
+      teamId: ticket.teamId,
+      details: {
+        assigneeId: null,
+      },
+    });
+
     return res.status(200).json({
       status: "success",
       data: {
@@ -263,6 +336,19 @@ const assignToUser = catchAsync(async (req, res, next) => {
     { assigneeId },
     { new: true },
   );
+
+  //LOGGING SYSTEM EVENT
+  logActivity({
+    userId: req.user.id,
+    action: "TICKET_ASSIGNED",
+    resourceType: "Ticket",
+    resourceId: response._id,
+    teamId: ticket.teamId,
+    details: {
+      oldAssigneeId: ticket.assigneeId || null,
+      newAssigneeId: assigneeId,
+    },
+  });
 
   // LOG SYSTEM HISTORY
   const assigneeName = assigneeId
@@ -319,6 +405,20 @@ const deleteTicket = catchAsync(async (req, res, next) => {
 
   //deleting the ticket
   await Ticket.findByIdAndDelete(ticketId);
+
+  //LOGGING ACTIVITY
+  logActivity({
+    userId: req.user.id,
+    action: "TICKET_DELETED",
+    resourceType: "Ticket",
+    resourceId: ticketId,
+    teamId,
+    details: {
+      title: ticket.title,
+      description: ticket.description,
+      priority: ticket.priority,
+    },
+  });
 
   // --- REAL-TIME EMISSION ---
   const io = socketManager.getIO();

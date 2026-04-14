@@ -40,13 +40,13 @@ export const socketManager = {
 
         let decoded;
         try {
-          decoded = await promisify(jwt.verify)(
-            token,
-            process.env.JWT_SECRET,
-          );
+          decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
         } catch (err) {
           return next(
-            new AppError("Authentication error: Invalid or malformed token", 401),
+            new AppError(
+              "Authentication error: Invalid or malformed token",
+              401,
+            ),
           );
         }
 
@@ -115,7 +115,7 @@ export const socketManager = {
           senderId: socket.user._id,
           message: message,
           timestamp: savedMessage.createdAt,
-          teamId: teamId
+          teamId: teamId,
         });
 
         console.log(`Chat in ${roomName}: ${socket.user.name} -> ${message}`);
@@ -147,7 +147,7 @@ export const socketManager = {
         });
 
         console.log(
-          `Private: ${socket.user.name} -> User(${receiverId}): ${message}`
+          `Private: ${socket.user.name} -> User(${receiverId}): ${message}`,
         );
       });
 
@@ -157,8 +157,8 @@ export const socketManager = {
     });
 
     console.log("Socket.io Initialized successfully........!");
-      return io;
-    },
+    return io;
+  },
 
   /**
    * Get the initialized IO instance

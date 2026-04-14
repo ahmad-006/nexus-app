@@ -18,6 +18,7 @@ import { userRouter } from "./routes/userRoutes.js";
 import { authRouter } from "./routes/authRoutes.js";
 import { commentRouter } from "./routes/commentRoutes.js";
 import { messageRouter } from "./routes/messageRoutes.js";
+import { activityRouter } from "./routes/activityRoutes.js";
 import { globalErrorHandler } from "./controllers/errorController.js";
 import { AppError } from "./util/appError.js";
 import { nexusGuard } from "./util/sanitize.js";
@@ -70,6 +71,7 @@ app.use("/api/users", userRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/comments", commentRouter);
 app.use("/api/messages", messageRouter);
+app.use("/api/activities", activityRouter);
 
 app.all(/.*/, (req, res, next) => {
   const error = new AppError(

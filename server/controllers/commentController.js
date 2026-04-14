@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import { Comment } from "../models/Comment.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
+import { logActivity } from "./activityController.js";
 
 /**
  * @desc    Get all top-level comments for a specific ticket
@@ -84,6 +85,19 @@ export const postComment = catchAsync(async (req, res, next) => {
     parentCommentId: commentId || null,
   });
   await comment.save();
+
+  //LOGGING ACTIVITY
+  logActivity({
+    userId: req.user.id,
+    action: "COMMENT_CREATED",
+    resourceType: "Comment",
+    resourceId: comment._id,
+    teamId: ticketId,
+    details: {
+      text,
+      commentId,
+    },
+  });
 
   return res.status(201).json({
     status: "success",

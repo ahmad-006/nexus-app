@@ -1,7 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  /* This replaces tailwind.config.js */
-  --color-nexus-blue: #007bff;
-  --color-nexus-dark: #1a1a1a;
+  /* Nexus Alabaster Premium Theme */
+  --color-nexus-navy: #0F172A;
+  --color-nexus-alabaster: #F5F5F7;
+  --color-nexus-white: #FFFFFF;
+  --color-nexus-slate: #475569;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #F5F5F7;
+  color: #2D3338;
+  font-family: 'Manrope', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+/* Premium Selection (Navy tint) */
+::selection {
+  background-color: rgba(15, 23, 42, 0.08);
+  color: #0F172A;
+}
+
+/* Refined Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F5F5F7;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
 }
