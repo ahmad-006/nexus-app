@@ -99,23 +99,44 @@ export const deleteUser = catchAsync(async (req, res) => {
 });
 
 /**
- * @desc    Get all tickets assigned to or reported by current user in a specific team
+ * @desc    Get all tickets assigned to or reported by current user globally or in a specific team
  * @route   GET /api/users/me/tickets
  * @access  Private
  */
 export const getTickets = catchAsync(async (req, res, next) => {
   const userId = req.user.id;
   const { teamId } = req.query;
-  if (!teamId) return next(new AppError("teamId is required", 400));
 
-  const tickets = await Ticket.find({
+  // 1. EXTRACT ALL TEAM IDs
+  const userTeamIds = req.user.teams.map((team) => team._id.toString());
+
+  // 2. GET THE TICKET IN WHICH USER IS REPORTER OR ASSIGNEE
+  const query = {
     $or: [{ reporterId: userId }, { assigneeId: userId }],
-    teamId,
-  });
+  };
 
-  return res
-    .status(200)
-    .json({ status: "success", results: tickets.length, data: { tickets } });
+  // 3. SECURITY CHECKS TO ENSURE USER IS MEMBER 
+  if (teamId) {
+    if (!userTeamIds.includes(teamId)) {
+      return next(
+        new AppError("You are not authorized to access this team's tickets", 403),
+      );
+    }
+    query.teamId = teamId;
+  } else {
+    query.teamId = { $in: userTeamIds };
+  }
+
+  // 4. FETCH TEAMID AND TEAM NAME TO SHOW IT ON FRONTEND
+  const tickets = await Ticket.find(query).populate("teamId", "name");
+
+  return res.status(200).json({
+    status: "success",
+    results: tickets.length,
+    data: {
+      tickets,
+    },
+  });
 });
 
 /**
