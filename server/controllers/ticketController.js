@@ -9,6 +9,10 @@ import { sendEmail } from "../util/nodemailer.js";
 import { Types } from "mongoose";
 import { socketManager } from "../util/socket.js";
 import { logActivity } from "./activityController.js";
+import { imagekit, upload } from "../util/imagekit.js";
+
+// MULTER MIDDLEWARE FOR MULTI-FILE UPLOAD
+export const uploadTicketFiles = upload.array("files", 5); // Allow up to 5 files
 
 /**
  * @desc    Fetch all the tickets belonging to a specific team
@@ -62,7 +66,7 @@ const getTicket = catchAsync(async (req, res, next) => {
  * @access  Private (Member or Admin)
  */
 const postTicket = catchAsync(async (req, res, next) => {
-  const { title, description, priority } = req.body;
+  const { title, description, priority, dueDate } = req.body;
   const { teamId } = req.params;
   const { id: userId } = req.user;
 
@@ -76,6 +80,7 @@ const postTicket = catchAsync(async (req, res, next) => {
     teamId: teamId,
     assigneeId: null,
     reporterId: userId,
+    dueDate,
   });
   const savedTicket = await ticket.save();
 
@@ -90,6 +95,7 @@ const postTicket = catchAsync(async (req, res, next) => {
       title,
       description,
       priority,
+      dueDate,
     },
   });
 
@@ -115,7 +121,7 @@ const postTicket = catchAsync(async (req, res, next) => {
  */
 const patchTicket = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
-  const { title, description, priority } = req.body;
+  const { title, description, priority, dueDate } = req.body;
   const updatedData = {};
 
   //finding the ticket and storing it in oldTicket
@@ -126,6 +132,7 @@ const patchTicket = catchAsync(async (req, res, next) => {
   if (title) updatedData.title = title;
   if (description) updatedData.description = description;
   if (priority) updatedData.priority = priority;
+  if (dueDate) updatedData.dueDate = dueDate;
 
   //throwing update if no field is changed
   if (Object.keys(updatedData).length === 0) {
@@ -154,8 +161,8 @@ const patchTicket = catchAsync(async (req, res, next) => {
     });
   }
 
-  // 2. Log Title or Description changes under a general update
-  if (title || description) {
+  // 2. Log Title, Description or Due Date changes under a general update
+  if (title || description || dueDate) {
     logActivity({
       userId: req.user.id,
       action: "TICKET_UPDATED",
@@ -166,6 +173,7 @@ const patchTicket = catchAsync(async (req, res, next) => {
         titleChanged: !!title && oldTicket.title !== updatedTicket.title,
         descriptionChanged:
           !!description && oldTicket.description !== updatedTicket.description,
+        dueDateChanged: !!dueDate && oldTicket.dueDate !== updatedTicket.dueDate,
       },
     });
   }
@@ -490,6 +498,61 @@ const getStats = catchAsync(async (req, res, next) => {
     status: "success",
     data: {
       stats: formattedStats,
+    },
+  });
+});
+
+/**
+ * @desc    Upload multiple attachments to a specific ticket via ImageKit
+ * @route   POST /api/tickets/:ticketId/attachments
+ * @access  Private (Member)
+ */
+export const postTicketAttachments = catchAsync(async (req, res, next) => {
+  const { ticketId } = req.params;
+
+  if (!req.files || req.files.length === 0) {
+    return next(new AppError("No files uploaded", 400));
+  }
+
+  const ticket = await Ticket.findById(ticketId);
+  if (!ticket) return next(new AppError("Ticket not found", 404));
+
+  const uploadPromises = req.files.map((file) => {
+    return imagekit.upload({
+      file: file.buffer,
+      fileName: `ticket-${ticketId}-${Date.now()}-${file.originalname}`,
+      folder: "/nexus-tickets",
+    });
+  });
+
+  const uploadResults = await Promise.all(uploadPromises);
+
+  const newAttachments = uploadResults.map((result) => ({
+    url: result.url,
+    name: result.name,
+    fileId: result.fileId,
+  }));
+
+  const updatedTicket = await Ticket.findByIdAndUpdate(
+    ticketId,
+    { $push: { attachments: { $each: newAttachments } } },
+    { new: true },
+  );
+
+  // LOG ACTIVITY
+  logActivity({
+    userId: req.user.id,
+    action: "TICKET_ATTACHMENTS_ADDED",
+    resourceType: "Ticket",
+    resourceId: ticketId,
+    teamId: ticket.teamId,
+    details: { count: newAttachments.length },
+  });
+
+  return res.status(200).json({
+    status: "success",
+    data: {
+      attachments: updatedTicket.attachments,
     },
   });
 });
