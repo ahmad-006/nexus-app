@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import { Comment } from "../models/Comment.js";
+import { Ticket } from "../models/Ticket.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 import { logActivity } from "./activityController.js";
@@ -78,6 +79,10 @@ export const postComment = catchAsync(async (req, res, next) => {
   const { text, commentId } = req.body;
   if (!text) return next(new AppError("Comment Text is required", 400));
 
+  // Find ticket to get teamId for activity log
+  const ticket = await Ticket.findById(ticketId);
+  if (!ticket) return next(new AppError("Ticket not found", 404));
+
   const comment = new Comment({
     ticketId,
     text,
@@ -90,12 +95,12 @@ export const postComment = catchAsync(async (req, res, next) => {
   logActivity({
     userId: req.user.id,
     action: "COMMENT_CREATED",
-    resourceType: "Comment",
+    resourceType: "Comment", 
     resourceId: comment._id,
-    teamId: ticketId,
+    teamId: ticket.teamId,
     details: {
       text,
-      commentId,
+      commentId: comment._id,
     },
   });
 
