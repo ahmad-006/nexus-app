@@ -74,4 +74,9 @@ userSchema.virtual("teams", {
   justOne: false,
 });
 
+userSchema.virtual("teamIds").get(function () {
+  if (!this.teams) return [];
+  return this.teams.map((team) => team._id);
+});
+
 export const User = mongoose.model("User", userSchema);
