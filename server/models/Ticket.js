@@ -37,6 +37,20 @@ const ticketSchema = new Schema(
       ref: "Team",
       required: true,
     },
+    dueDate: {
+      type: Date,
+    },
+    attachments: [
+      {
+        url: String,
+        name: String,
+        fileId: String, // Storing ImageKit fileId for potential deletion
+        uploadedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true },
 );
