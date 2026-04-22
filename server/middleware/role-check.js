@@ -85,11 +85,20 @@ const isAdminOrReporter = catchAsync(async (req, res, next) => {
   const isReporter = ticket.reporterId.toString() === req.user.id;
   const teamId = ticket.teamId.toString();
 
-  const userTeam = req.user.teams.find(
-    (team) => team.teamId.toString() === teamId && team.role === "admin",
+  // Find the team in the user's populated teams virtual
+  const teamDoc = req.user.teams.find(
+    (team) => team._id.toString() === teamId,
   );
 
-  if (!isReporter && !userTeam) {
+  let isAdmin = false;
+  if (teamDoc) {
+    const membership = teamDoc.members.find(
+      (m) => m.userId.toString() === req.user.id.toString(),
+    );
+    isAdmin = membership && membership.role === "admin";
+  }
+
+  if (!isReporter && !isAdmin) {
     return next(
       new AppError(
         "Access Denied! Only the reporter or team admins can edit this ticket.",
