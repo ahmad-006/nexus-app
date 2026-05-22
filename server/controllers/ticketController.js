@@ -557,6 +557,46 @@ export const postTicketAttachments = catchAsync(async (req, res, next) => {
   });
 });
 
+
+const patchReorderTicket = catchAsync(async (req, res, next) => {
+  const { ticketId } = req.params;
+  const { status, position } = req.body;
+
+  if (!position) {
+    return next(new AppError('Position is required', 400));
+  }
+
+  const updatedTicket = await Ticket.findByIdAndUpdate(
+    ticketId,
+    {
+      position,
+      status,
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  if (!updatedTicket) {
+    return next(new AppError('Ticket not found', 404));
+  }
+
+  const io = socketManager.getIO();
+  io.to(`team_${updatedTicket.teamId.toString()}`).emit('ticket_reordered', {
+    ticketId: updatedTicket._id,
+    newStatus: updatedTicket.status,
+    newPosition: updatedTicket.position,
+  });
+
+  return res.status(200).json({
+    status: 'success',
+    data: {
+      ticket: updatedTicket,
+    },
+  });
+});
+
 export {
   getTicket,
   getTickets,
@@ -566,4 +606,5 @@ export {
   getStats,
   assignToUser,
   patchTicketStatus,
+  patchReorderTicket,
 };
