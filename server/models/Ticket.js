@@ -1,4 +1,4 @@
-import mongoose, { Schema, Types } from "mongoose";
+import mongoose, { Schema, Types } from 'mongoose';
 
 const ticketSchema = new Schema(
   {
@@ -12,29 +12,34 @@ const ticketSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["TODO", "IN_PROGRESS", "DONE"],
-      default: "TODO",
+      enum: ['TODO', 'IN_PROGRESS', 'DONE'],
+      default: 'TODO',
       required: true,
+    },
+    position: {
+      type: Number,
+      required: true,
+      default: 0,
     },
     priority: {
       type: String,
-      enum: ["LOW", "MEDIUM", "HIGH"],
+      enum: ['LOW', 'MEDIUM', 'HIGH'],
 
       required: true,
     },
     reporterId: {
       type: Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       required: true,
     },
     assigneeId: {
       type: Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       required: false,
     },
     teamId: {
       type: Types.ObjectId,
-      ref: "Team",
+      ref: 'Team',
       required: true,
     },
     dueDate: {
@@ -55,4 +60,4 @@ const ticketSchema = new Schema(
   { timestamps: true },
 );
 
-export const Ticket = mongoose.model("Ticket", ticketSchema);
+export const Ticket = mongoose.model('Ticket', ticketSchema);
