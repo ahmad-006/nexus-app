@@ -92,6 +92,12 @@ ticketRouter
 //Updating the order of the ticket
 ticketRouter
   .route('/:ticketId/reorder')
-  .patch(protect, isMember, patchReorderTicket);
+  .patch(
+    protect,
+    isMember,
+    [ticketValidation.position, ticketValidation.optionalStatus],
+    validate,
+    patchReorderTicket,
+  );
 
 export { ticketRouter };
