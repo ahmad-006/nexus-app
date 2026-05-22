@@ -89,6 +89,11 @@ export const ticketValidation = {
   get createAssignee() {
     return ticketValidationBase.assigneeId().notEmpty();
   },
+  position: body("position")
+    .notEmpty()
+    .withMessage("Position is required")
+    .isNumeric()
+    .withMessage("Position must be a valid number"),
 };
 
 export const teamValidation = {
