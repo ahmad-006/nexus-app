@@ -203,9 +203,19 @@ export const patchAcceptInvite = catchAsync(async (req, res, next) => {
       .json({ status: "success", message: "Already a member" });
   }
 
-  team.members.push({ userId, role: "member" });
-  await team.save();
+  const invite = await TeamInvite.findOneAndUpdate(
+    { teamId, inviteeId: userId, status: 'PENDING' },
+    { status: 'ACCEPTED' },
+    { new: true },
+  );
 
+  if (!invite) {
+    return next(new AppError('Invitation expired or does not exist', 400));
+  }
+
+  team.members.push({ userId, role: 'member' });
+  await team.save();
+  
   logActivity({
     userId: inviterId,
     action: "MEMBER_ADDED",
