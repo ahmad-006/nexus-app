@@ -58,7 +58,7 @@ ticketRouter.route('/team/:teamId/stats').get(protect, isMember, getStats);
 
 ticketRouter
   .route('/:ticketId')
-  .get(protect, getTicket) // Any logged in user can see a ticket if they have the ID
+  .get(protect, isMember, getTicket) // Protected with isMember to prevent IDOR
   .patch(
     protect,
     isAdminOrReporter,
