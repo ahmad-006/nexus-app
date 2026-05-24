@@ -73,6 +73,10 @@ const postTicket = catchAsync(async (req, res, next) => {
   if (!teamId || !userId) {
     return next(new AppError("teamId and userId are required", 400));
   }
+
+  const lastTicket = await Ticket.findOne({ teamId, status: "TODO" }).sort("-position");
+  const position = lastTicket ? lastTicket.position + 1024 : 1024;
+
   const ticket = new Ticket({
     title,
     description,
@@ -81,6 +85,7 @@ const postTicket = catchAsync(async (req, res, next) => {
     assigneeId: null,
     reporterId: userId,
     dueDate,
+    position,
   });
   const savedTicket = await ticket.save();
 
