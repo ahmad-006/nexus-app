@@ -7,6 +7,8 @@ import { sendEmail } from "../util/nodemailer.js";
 import jwt from "jsonwebtoken";
 import { promisify } from "util";
 import { logActivity } from "./activityController.js";
+import { TeamInvite } from '../models/TeamInvite.js';
+import { socketManager } from '../util/socket.js';
 
 /**
  * @desc    Create a new team
@@ -17,26 +19,26 @@ export const postCreateTeam = catchAsync(async (req, res, next) => {
   const { name } = req.body;
   const { id: ownerId } = req.user;
 
-  if (!name) return next(new AppError("Name is required", 400));
+  if (!name) return next(new AppError('Name is required', 400));
 
   const team = new Team({
     name,
     ownerId,
-    members: [{ role: "admin", userId: ownerId }],
+    members: [{ role: 'admin', userId: ownerId }],
   });
   await team.save();
 
   logActivity({
     userId: ownerId,
-    action: "TEAM_CREATED",
-    resourceType: "Team",
+    action: 'TEAM_CREATED',
+    resourceType: 'Team',
     resourceId: team._id,
     teamId: team._id,
     details: { teamName: name },
   });
 
   return res.status(200).json({
-    status: "success",
+    status: 'success',
     data: {
       team,
     },
@@ -52,27 +54,27 @@ export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
   const { teamId, userId } = req.params;
 
   if (!userId || !teamId)
-    return next(new AppError("userId and teamId required", 400));
+    return next(new AppError('userId and teamId required', 400));
 
   const team = await Team.findById(teamId);
-  if (!team) return next(new AppError("Team Not Found", 404));
+  if (!team) return next(new AppError('Team Not Found', 404));
 
   // Check if user is actually in the team before promoting
   const isMember = team.members.some(
     (member) => member.userId.toString() === userId.toString(),
   );
-  if (!isMember) return next(new AppError("User is not of this team", 400));
+  if (!isMember) return next(new AppError('User is not of this team', 400));
 
   const isAlreadyAdmin = team.members.some(
     (member) =>
-      member.userId.toString() === userId.toString() && member.role === "admin",
+      member.userId.toString() === userId.toString() && member.role === 'admin',
   );
-  if (isAlreadyAdmin) return next(new AppError("User is already admin", 400));
+  if (isAlreadyAdmin) return next(new AppError('User is already admin', 400));
 
   // Add user to admin list in the Team model
   const updatedMembers = team.members.map((member) => {
     if (member.userId.toString() === userId.toString()) {
-      return { ...member, role: "admin" };
+      return { ...member, role: 'admin' };
     }
     return member;
   });
@@ -85,15 +87,15 @@ export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
 
   logActivity({
     userId: req.user.id,
-    action: "MEMBER_PROMOTED",
-    resourceType: "Team",
+    action: 'MEMBER_PROMOTED',
+    resourceType: 'Team',
     resourceId: teamId,
     teamId,
     details: { promotedUserId: userId },
   });
 
   return res.status(200).json({
-    status: "success",
+    status: 'success',
     data: {
       updatedTeam,
     },
@@ -110,41 +112,67 @@ export const postAddMember = catchAsync(async (req, res, next) => {
   const { userId } = req.body;
 
   if (!userId || !teamId)
-    return next(new AppError("User and team ID is required", 400));
+    return next(new AppError('User and team ID is required', 400));
 
   const user = await User.findById(userId);
-  if (!user) return next(new AppError("User not found", 404));
+  if (!user) return next(new AppError('User not found', 404));
 
   const team = await Team.findById(teamId);
-  if (!team) return next(new AppError("Team not found", 404));
+  if (!team) return next(new AppError('Team not found', 404));
 
   const isAlreadyMember = team.members.some(
     (member) => member.userId.toString() === userId.toString(),
   );
   if (isAlreadyMember)
-    return next(new AppError("User is already a member of this team", 400));
+    return next(new AppError('User is already a member of this team', 400));
+
+  const isInvitePending = await TeamInvite.findOne({
+    teamId,
+    inviteeId: userId,
+    status: 'PENDING',
+    expiresAt: { $gt: Date.now() }, // Only block if the invite hasn't expired yet
+  });
+  if (isInvitePending) {
+    return next(new AppError('User has a pending invitation', 400));
+  }
+
+  //creating Invite if not exists
+  const invite = await TeamInvite.create({
+    teamId,
+    inviterId: req.user.id,
+    inviteeId: userId,
+    status: 'PENDING',
+  });
+
+  // Sending real time notification
+  const io = socketManager.getIO();
+  io.to(`user_${userId}`).emit('new_invitation', {
+    inviteId: invite._id,
+    teamName: team.name,
+    inviterName: req.user.name,
+  });
 
   //SIgning a jwt token for invitation
   const token = jwt.sign(
     { teamId, userId, inviterId: req.user.id },
     process.env.JWT_SECRET,
     {
-      expiresIn: "1d",
+      expiresIn: '7d',
     },
   );
 
   //SEND INVITATION EMAIL TO USER
   await sendEmail({
-    name: user.name.split(" ")[0],
+    name: user.name.split(' ')[0],
     email: user.email,
     token,
-    type: "teamInvite",
+    type: 'teamInvite',
     adminName: req.user.name,
   });
 
   return res.status(200).json({
-    status: "success",
-    message: "Invitation email sent",
+    status: 'success',
+    message: 'Invitation email sent',
   });
 });
 
