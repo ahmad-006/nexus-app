@@ -7,7 +7,7 @@ export class APIFeatures {
   filter() {
     // 1) CLONE & CLEAN
     const queryObj = { ...this.queryString };
-    const excludedFields = ["page", "sort", "limit", "fields"];
+    const excludedFields = ["page", "sort", "limit", "fields", "search"];
     excludedFields.forEach((el) => delete queryObj[el]);
 
     // 2) RESTRICT FLAT KEYS ( priority[in] -> { priority: { in: ... } })
