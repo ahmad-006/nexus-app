@@ -22,8 +22,13 @@ export const uploadTicketFiles = upload.array("files", 5); // Allow up to 5 file
 const getTickets = catchAsync(async (req, res, next) => {
   const { teamId } = req.params;
 
+  let queryFilter = { teamId };
+  if (req.query.search) {
+    queryFilter.$text = { $search: req.query.search };
+  }
+
   // 1) EXECUTE QUERY
-  const features = new APIFeatures(Ticket.find({ teamId }), req.query)
+  const features = new APIFeatures(Ticket.find(queryFilter), req.query)
     .filter()
     .sort()
     .limitFields()
