@@ -7,6 +7,7 @@ import {
   postCreateTeam,
   deleteTeam,
   getTeam,
+  getMyInvites,
 } from "../controllers/teamController.js";
 import { isMember, restrictTo } from "../middleware/role-check.js";
 import { teamValidation } from "../middleware/validator.js";
@@ -19,6 +20,7 @@ const teamsRouter = express.Router();
 teamsRouter.use(protect);
 
 // 2) STATIC ROUTES
+teamsRouter.route("/invites/me").get(getMyInvites);
 teamsRouter.route("/accept-invite/members/:token").patch(patchAcceptInvite);
 
 // 3) BASE ROUTES
