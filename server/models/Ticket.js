@@ -60,4 +60,9 @@ const ticketSchema = new Schema(
   { timestamps: true },
 );
 
+ticketSchema.index(
+  { title: 'text', description: 'text' },
+  { weights: { title: 10, description: 2 }, name: 'TextIndex' }
+);
+
 export const Ticket = mongoose.model('Ticket', ticketSchema);
