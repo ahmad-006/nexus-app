@@ -215,7 +215,7 @@ export const patchAcceptInvite = catchAsync(async (req, res, next) => {
 
   team.members.push({ userId, role: 'member' });
   await team.save();
-  
+
   logActivity({
     userId: inviterId,
     action: "MEMBER_ADDED",
@@ -235,6 +235,28 @@ export const patchAcceptInvite = catchAsync(async (req, res, next) => {
   return res.status(200).json({
     status: "success",
     message: "Team joined successfully",
+  });
+});
+
+/**
+ * @desc    Get all pending team invitations for logged-in user
+ * @route   GET /api/teams/invites/me
+ * @access  Private
+ */
+export const getMyInvites = catchAsync(async (req, res, next) => {
+  const { id: userId } = req.user;
+
+  //getting all the invites and then populating the teamId to get teamName.
+  const invites = await TeamInvite.find({
+    inviteeId: userId,
+    status: 'PENDING',
+  }).populate('teamId', 'name');
+
+  return res.status(200).json({
+    status: 'success',
+    data: {
+      invites,
+    },
   });
 });
 
