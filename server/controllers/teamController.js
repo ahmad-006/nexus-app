@@ -7,7 +7,8 @@ import { sendEmail } from "../util/nodemailer.js";
 import jwt from "jsonwebtoken";
 import { promisify } from "util";
 import { logActivity } from "./activityController.js";
-import { TeamInvite } from '../models/TeamInvite.js';
+import { TeamInvite } from "../models/TeamInvite.js";
+import { createNotification } from "../util/notificationService.js";
 import { socketManager } from '../util/socket.js';
 
 /**
@@ -144,12 +145,13 @@ export const postAddMember = catchAsync(async (req, res, next) => {
     status: 'PENDING',
   });
 
-  // Sending real time notification
-  const io = socketManager.getIO();
-  io.to(`user_${userId}`).emit('new_invitation', {
-    inviteId: invite._id,
-    teamName: team.name,
-    inviterName: req.user.name,
+  // Sending persistent notification
+  await createNotification({
+    recipientId: userId,
+    senderId: req.user.id,
+    type: 'TEAM_INVITE',
+    message: `You were invited to join ${team.name}`,
+    resourceId: team._id,
   });
 
   //SIgning a jwt token for invitation
