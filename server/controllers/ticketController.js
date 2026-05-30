@@ -9,6 +9,7 @@ import { sendEmail } from "../util/nodemailer.js";
 import { Types } from "mongoose";
 import { socketManager } from "../util/socket.js";
 import { logActivity } from "./activityController.js";
+import { createNotification } from "../util/notificationService.js";
 import { imagekit, upload } from "../util/imagekit.js";
 
 // MULTER MIDDLEWARE FOR MULTI-FILE UPLOAD
@@ -391,6 +392,17 @@ const assignToUser = catchAsync(async (req, res, next) => {
       priority: ticket.priority,
       adminName: req.user.name,
     }).catch((err) => console.error("Assignment Email Failed:", err.message));
+  }
+
+  // SEND PERSISTENT IN-APP NOTIFICATION
+  if (assigneeId) {
+    await createNotification({
+      recipientId: assigneeId,
+      senderId: req.user.id,
+      type: 'TICKET_ASSIGNED',
+      message: `You were assigned to ticket: ${ticket.title}`,
+      resourceId: response._id,
+    });
   }
 
   // --- REAL-TIME EMISSION ---
