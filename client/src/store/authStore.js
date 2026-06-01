@@ -1,12 +1,60 @@
 import { create } from 'zustand';
+import axios from '../api/axios';
 
-export const useAuthStore = create((set) => ({
+const useAuthStore = create((set) => ({
   user: null,
   isAuthenticated: false,
+  isLoading: false,
+  isCheckingAuth: true,
   
-  // Action to securely save the user profile in memory after logging in
-  login: (userData) => set({ user: userData, isAuthenticated: true }),
+  // Verify session on app load
+  checkAuth: async () => {
+    set({ isCheckingAuth: true });
+    try {
+      const response = await axios.get('/users/me');
+      set({ user: response.data.user, isAuthenticated: true, isCheckingAuth: false });
+    } catch (error) {
+      set({ user: null, isAuthenticated: false, isCheckingAuth: false });
+    }
+  },
+
+  // Login action making API call
+  login: async (email, password) => {
+    set({ isLoading: true });
+    try {
+      const response = await axios.post('/auth/login', { email, password });
+      set({ user: response.data.user, isAuthenticated: true, isLoading: false });
+      return response.data;
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
   
-  // Action to clear the session
-  logout: () => set({ user: null, isAuthenticated: false }),
+  // Signup action making API call
+  signup: async (userData) => {
+    set({ isLoading: true });
+    try {
+      const response = await axios.post('/auth/signup', userData);
+      set({ user: response.data.user, isAuthenticated: true, isLoading: false });
+      return response.data;
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  // Logout action making API call
+  logout: async () => {
+    set({ isLoading: true });
+    try {
+      await axios.post('/auth/logout');
+      set({ user: null, isAuthenticated: false, isLoading: false });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
 }));
+
+export default useAuthStore;

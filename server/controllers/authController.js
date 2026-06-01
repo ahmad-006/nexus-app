@@ -92,6 +92,19 @@ export const postLogin = catchAsync(async (req, res, next) => {
 });
 
 /**
+ * @desc    Logout user and clear cookie
+ * @route   POST /api/auth/logout
+ * @access  Public
+ */
+export const postLogout = catchAsync(async (req, res, next) => {
+  res.cookie("jwt", "loggedout", {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+  res.status(200).json({ status: "success" });
+});
+
+/**
  * @desc    Request password reset token via email
  * @route   POST /api/auth/forget-password
  * @access  Public
