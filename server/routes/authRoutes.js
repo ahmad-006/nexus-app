@@ -6,6 +6,8 @@ import {
   postSignUp,
   postUpdatePassword,
   postLogout,
+  postVerifyOtp,
+  postResendOtp,
   protect,
 } from "../controllers/authController.js";
 import { authValidation } from "../middleware/validator.js";
@@ -15,6 +17,8 @@ const authRouter = express.Router();
 
 authRouter.post("/login", [authValidation.email], validate, postLogin);
 authRouter.post("/logout", postLogout);
+authRouter.post("/verify-otp", postVerifyOtp);
+authRouter.post("/resend-otp", postResendOtp);
 authRouter.post(
   "/signup",
   [

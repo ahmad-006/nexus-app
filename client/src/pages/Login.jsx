@@ -20,7 +20,11 @@ const Login = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password. Please try again.');
+      if (err.response?.status === 403) {
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+      } else {
+        setError(err.response?.data?.message || 'Invalid email or password. Please try again.');
+      }
     }
   };
 

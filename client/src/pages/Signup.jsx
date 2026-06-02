@@ -24,7 +24,7 @@ const Signup = () => {
     }
     try {
       await signup({ name, email, password, confirmPassword });
-      navigate('/dashboard');
+      navigate(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create account. Please try again.');
     }

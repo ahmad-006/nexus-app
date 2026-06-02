@@ -46,6 +46,13 @@ const sendEmail = async ({
       buttonText = "Login to Nexus";
       actionUrl = `${frontendUrl}/login`;
       accentColor = "#2563eb";
+    } else if (type === "otp") {
+      subject = "Nexus: Your Verification Code";
+      bodyTitle = "Email Verification";
+      bodyText = `Hey ${name}, your 6-digit verification code is: <h2 style="letter-spacing: 5px; text-align: center; color: #0f172a;">${token}</h2> This code is valid for 10 minutes.`;
+      buttonText = "Verify Account";
+      actionUrl = `${frontendUrl}/verify-email?email=${email}`;
+      accentColor = "#2563eb";
     } else if (type === "reset") {
       subject = "Nexus: Password Reset Request";
       bodyTitle = "Password Reset";

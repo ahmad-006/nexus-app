@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import VerifyOtp from './pages/VerifyOtp';
 import useAuthStore from './store/authStore';
 import { Loader2 } from 'lucide-react';
 
@@ -32,6 +33,7 @@ function App() {
           
           <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
           <Route path="/signup" element={!isAuthenticated ? <Signup /> : <Navigate to="/dashboard" />} />
+          <Route path="/verify-email" element={!isAuthenticated ? <VerifyOtp /> : <Navigate to="/dashboard" />} />
           
           {/* Protected Routes Wrapper */}
           <Route element={<ProtectedRoute />}>

@@ -47,18 +47,32 @@ const createSendToken = (user, statusCode, res) => {
  * @access  Public
  */
 export const postSignUp = catchAsync(async (req, res, next) => {
-  //creating new user from the information provided in the req.body
-  const newUser = await User.create(req.body);
+  // Generate 6-digit OTP
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOtp = crypto.createHash("sha256").update(otpCode).digest("hex");
+  const otpExpiration = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-  //sending welcome email to user
+  //creating new user from the information provided in the req.body
+  const newUser = await User.create({
+    ...req.body,
+    isVerified: false,
+    otp: hashedOtp,
+    otpExpiration: otpExpiration
+  });
+
+  //sending OTP email to user
   await sendEmail({
     name: newUser.name.split(" ")[0],
     email: newUser.email,
-    type: "signup",
+    token: otpCode,
+    type: "otp",
   });
 
-  //sending response
-  createSendToken(newUser, 201, res);
+  // Do not send JWT. Tell frontend to verify email.
+  res.status(200).json({
+    status: "success",
+    message: "OTP sent to email. Please verify your account.",
+  });
 });
 
 /**
@@ -81,6 +95,11 @@ export const postLogin = catchAsync(async (req, res, next) => {
     return next(new AppError("Invalid credentials", 401));
   }
 
+  // Check if user is verified
+  if (!user.isVerified) {
+    return next(new AppError("Please verify your email before logging in.", 403));
+  }
+
   //comparing passwords via bcrypt's compare method
   const isValidPassword = await user.isCorrectPassword(password, user.password);
   if (!isValidPassword) {
@@ -89,6 +108,81 @@ export const postLogin = catchAsync(async (req, res, next) => {
 
   //sending Response
   createSendToken(user, 200, res);
+});
+
+/**
+ * @desc    Verify OTP for account activation
+ * @route   POST /api/auth/verify-otp
+ * @access  Public
+ */
+export const postVerifyOtp = catchAsync(async (req, res, next) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return next(new AppError("Email and OTP are required.", 400));
+  }
+
+  const hashedOtp = crypto.createHash("sha256").update(otp.toString()).digest("hex");
+
+  const user = await User.findOne({
+    email,
+    otp: hashedOtp,
+    otpExpiration: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return next(new AppError("Invalid or expired OTP.", 400));
+  }
+
+  user.isVerified = true;
+  user.otp = undefined;
+  user.otpExpiration = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  createSendToken(user, 200, res);
+});
+
+/**
+ * @desc    Resend OTP to user's email
+ * @route   POST /api/auth/resend-otp
+ * @access  Public
+ */
+export const postResendOtp = catchAsync(async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return next(new AppError("Email is required.", 400));
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return next(new AppError("User not found.", 404));
+  }
+
+  if (user.isVerified) {
+    return next(new AppError("Account is already verified.", 400));
+  }
+
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOtp = crypto.createHash("sha256").update(otpCode).digest("hex");
+  const otpExpiration = Date.now() + 10 * 60 * 1000;
+
+  user.otp = hashedOtp;
+  user.otpExpiration = otpExpiration;
+  await user.save({ validateBeforeSave: false });
+
+  await sendEmail({
+    name: user.name.split(" ")[0],
+    email: user.email,
+    token: otpCode,
+    type: "otp",
+  });
+
+  res.status(200).json({
+    status: "success",
+    message: "A new OTP has been sent to your email.",
+  });
 });
 
 /**
@@ -268,6 +362,11 @@ export const protect = catchAsync(async (req, res, next) => {
     return next(
       new AppError("User recently changed password! Please login again.", 401),
     );
+  }
+
+  // 5) Check if user is verified
+  if (!currentUser.isVerified) {
+    return next(new AppError("Please verify your email to access this route.", 403));
   }
 
   //ACCESS TO PROTECTED ROUTE

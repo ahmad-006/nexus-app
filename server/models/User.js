@@ -20,6 +20,12 @@ const userSchema = new Schema(
     },
     image: String,
     passwordChangedAt: Date,
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otp: String,
+    otpExpiration: Date,
     resetToken: String,
     resetTokenExpiration: Date,
   },

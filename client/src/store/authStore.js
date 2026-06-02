@@ -36,7 +36,32 @@ const useAuthStore = create((set) => ({
     set({ isLoading: true });
     try {
       const response = await axios.post('/auth/signup', userData);
+      set({ isLoading: false });
+      return response.data;
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  // Verify OTP
+  verifyOtp: async (email, otp) => {
+    set({ isLoading: true });
+    try {
+      const response = await axios.post('/auth/verify-otp', { email, otp });
       set({ user: response.data.user, isAuthenticated: true, isLoading: false });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  // Resend OTP
+  resendOtp: async (email) => {
+    set({ isLoading: true });
+    try {
+      const response = await axios.post('/auth/resend-otp', { email });
+      set({ isLoading: false });
       return response.data;
     } catch (error) {
       set({ isLoading: false });
