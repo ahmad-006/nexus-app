@@ -12,7 +12,7 @@ const useAuthStore = create((set) => ({
     set({ isCheckingAuth: true });
     try {
       const response = await axios.get('/users/me');
-      set({ user: response.data.user, isAuthenticated: true, isCheckingAuth: false });
+      set({ user: response.data.data.user, isAuthenticated: true, isCheckingAuth: false });
     } catch (error) {
       set({ user: null, isAuthenticated: false, isCheckingAuth: false });
     }
@@ -23,7 +23,7 @@ const useAuthStore = create((set) => ({
     set({ isLoading: true });
     try {
       const response = await axios.post('/auth/login', { email, password });
-      set({ user: response.data.user, isAuthenticated: true, isLoading: false });
+      set({ user: response.data.data.user, isAuthenticated: true, isLoading: false });
       return response.data;
     } catch (error) {
       set({ isLoading: false });
@@ -36,6 +36,7 @@ const useAuthStore = create((set) => ({
     set({ isLoading: true });
     try {
       const response = await axios.post('/auth/signup', userData);
+      // Signup does not log in directly, it redirects to verify email
       set({ isLoading: false });
       return response.data;
     } catch (error) {
@@ -49,7 +50,7 @@ const useAuthStore = create((set) => ({
     set({ isLoading: true });
     try {
       const response = await axios.post('/auth/verify-otp', { email, otp });
-      set({ user: response.data.user, isAuthenticated: true, isLoading: false });
+      set({ user: response.data.data.user, isAuthenticated: true, isLoading: false });
     } catch (error) {
       set({ isLoading: false });
       throw error;
