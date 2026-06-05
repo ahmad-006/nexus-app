@@ -57,8 +57,20 @@ const ticketSchema = new Schema(
       },
     ],
   },
-  { timestamps: true },
+  { 
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true } 
+  },
 );
+
+// Virtual field to get the count of comments
+ticketSchema.virtual('commentCount', {
+  ref: 'Comment',
+  localField: '_id',
+  foreignField: 'ticketId',
+  count: true
+});
 
 ticketSchema.index(
   { title: 'text', description: 'text' },

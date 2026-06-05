@@ -29,7 +29,7 @@ const getTickets = catchAsync(async (req, res, next) => {
   }
 
   // 1) EXECUTE QUERY
-  const features = new APIFeatures(Ticket.find(queryFilter), req.query)
+  const features = new APIFeatures(Ticket.find(queryFilter).populate('commentCount'), req.query)
     .filter()
     .sort()
     .limitFields()
@@ -586,6 +586,26 @@ const patchReorderTicket = catchAsync(async (req, res, next) => {
 
   if (!position) {
     return next(new AppError('Position is required', 400));
+  }
+
+  // Fetch the current ticket to check transitions
+  const oldTicket = await Ticket.findById(ticketId);
+  if (!oldTicket) {
+    return next(new AppError('Ticket not found', 404));
+  }
+
+  // Only validate transitions if the status is actually changing
+  if (status && status !== oldTicket.status) {
+    const currentStatus = oldTicket.status || 'TODO';
+    const strictTransitions = {
+      TODO: ["TODO", "IN_PROGRESS"],
+      IN_PROGRESS: ["IN_PROGRESS", "TODO", "DONE"],
+      DONE: ["DONE", "IN_PROGRESS"]
+    };
+
+    if (!strictTransitions[currentStatus].includes(status)) {
+      return next(new AppError(`Invalid transition from ${currentStatus} to ${status}`, 400));
+    }
   }
 
   const updatedTicket = await Ticket.findByIdAndUpdate(
