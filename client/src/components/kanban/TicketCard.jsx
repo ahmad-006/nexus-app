@@ -54,15 +54,15 @@ const TicketCard = ({ ticket, index }) => {
         >
           <div className="p-3.5 flex flex-col gap-2">
             
-            {/* Header: Ticket ID & Priority */}
+            {/* Header: Priority & Ticket ID */}
             <div className="flex justify-between items-start">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 {ticket.priority && (
                   <div className="relative group/priority" title={`Priority: ${ticket.priority}`}>
                     {PRIORITY_ICONS[ticket.priority]}
                   </div>
                 )}
-                <span className="text-[11px] font-semibold text-slate-500 tracking-wide uppercase">
+                <span className="text-[11px] font-mono font-medium text-slate-500 tracking-wider">
                   {ticketId}
                 </span>
               </div>
@@ -76,54 +76,18 @@ const TicketCard = ({ ticket, index }) => {
             </div>
 
             {/* Title */}
-            <Link to={`/dashboard/ticket/${ticket._id}`} className="hover:underline decoration-blue-500 underline-offset-2 decoration-2">
+            <Link to={`/dashboard/ticket/${ticket._id}`} className="hover:underline decoration-blue-500 underline-offset-2 decoration-2 mb-1">
               <h4 className="font-semibold text-slate-900 text-[13px] leading-snug line-clamp-2">
                 {ticket.title}
               </h4>
             </Link>
             
-            {/* Explicit Names */}
-            <div className="flex flex-col gap-0.5 text-[11px] font-medium mt-1">
-              {reporter && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400">Reporter:</span>
-                  <span className="text-slate-700 truncate flex items-center gap-1.5">
-                    {reporter.image ? (
-                      <img src={reporter.image} alt={reporter.name} className="w-3.5 h-3.5 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-3.5 h-3.5 rounded-full bg-slate-200 flex items-center justify-center text-[7px] text-slate-600 font-bold">
-                        {getInitials(reporter.name)}
-                      </div>
-                    )}
-                    {reporter.name}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400">Assignee:</span>
-                <span className={assignee ? "text-slate-700 truncate flex items-center gap-1.5" : "text-slate-400 italic"}>
-                  {assignee ? (
-                    <>
-                      {assignee.image ? (
-                        <img src={assignee.image} alt={assignee.name} className="w-3.5 h-3.5 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-3.5 h-3.5 rounded-full bg-blue-100 flex items-center justify-center text-[7px] text-blue-700 font-bold">
-                          {getInitials(assignee.name)}
-                        </div>
-                      )}
-                      {assignee.name}
-                    </>
-                  ) : 'Unassigned'}
-                </span>
-              </div>
-            </div>
-            
-            {/* Footer Metrics */}
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+            {/* Footer Metrics & Assignee Avatar */}
+            <div className="flex items-end justify-between mt-auto pt-3">
               <div className="flex items-center gap-3 text-slate-400 text-[11px] font-medium">
                 {hasAttachments && (
                   <div className="relative group/metric flex items-center gap-1 hover:text-slate-600 transition-colors">
-                    <Paperclip className="w-3 h-3" />
+                    <Paperclip className="w-3.5 h-3.5" />
                     <span>{ticket.attachments.length}</span>
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-slate-900 text-white text-[10px] font-medium rounded opacity-0 group-hover/metric:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                       {ticket.attachments.length} attachments
@@ -132,7 +96,7 @@ const TicketCard = ({ ticket, index }) => {
                 )}
                 {ticket.commentCount > 0 && (
                   <div className="relative group/metric flex items-center gap-1 hover:text-slate-600 transition-colors">
-                    <MessageSquare className="w-3 h-3" />
+                    <MessageSquare className="w-3.5 h-3.5" />
                     <span>{ticket.commentCount}</span> 
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-slate-900 text-white text-[10px] font-medium rounded opacity-0 group-hover/metric:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                       {ticket.commentCount} comments
@@ -141,9 +105,37 @@ const TicketCard = ({ ticket, index }) => {
                 )}
                 {ticket.dueDate && (
                   <div className="relative group/metric flex items-center gap-1 hover:text-slate-600 transition-colors">
-                    <Calendar className="w-3 h-3" />
+                    <Calendar className="w-3.5 h-3.5" />
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-slate-900 text-white text-[10px] font-medium rounded opacity-0 group-hover/metric:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                       Due: {new Date(ticket.dueDate).toLocaleDateString()}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Assignee Avatar */}
+              <div className="flex shrink-0 ml-2">
+                {assignee ? (
+                  <div className="relative group/avatar cursor-pointer">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shadow-sm">
+                      {assignee.image ? (
+                        <img src={assignee.image} alt={assignee.name} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        <span className="text-[9px] font-bold text-blue-700">{getInitials(assignee.name)}</span>
+                      )}
+                    </div>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full right-0 mb-1.5 px-2 py-1 bg-slate-900 text-white text-[10px] font-medium rounded opacity-0 group-hover/avatar:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                      Assignee: {assignee.name}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative group/avatar cursor-pointer">
+                    <div className="w-6 h-6 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center shadow-sm border-dashed">
+                      <UserIcon className="w-3 h-3 text-slate-300" />
+                    </div>
+                    <div className="absolute bottom-full right-0 mb-1.5 px-2 py-1 bg-slate-900 text-white text-[10px] font-medium rounded opacity-0 group-hover/avatar:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                      Unassigned
                     </div>
                   </div>
                 )}
