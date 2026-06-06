@@ -13,7 +13,7 @@ const BoardColumn = ({ status, tickets }) => {
   const config = STATUS_CONFIG[status] || { label: status, dot: 'bg-slate-400' };
 
   return (
-    <div className="flex flex-col w-[340px] shrink-0 bg-slate-50/50 rounded-2xl border border-slate-200/60 overflow-hidden shadow-sm">
+    <div className="flex flex-col w-[280px] sm:w-[320px] md:w-[340px] shrink-0 snap-center bg-slate-50/50 rounded-2xl border border-slate-200/60 overflow-hidden shadow-sm">
       
       {/* Column Header */}
       <div className="p-4 border-b border-slate-200/50 bg-white/50 backdrop-blur-md flex justify-between items-center sticky top-0 z-10">

@@ -133,20 +133,19 @@ const Workspace = () => {
   }
 
   return (
-    <div className="flex-1 overflow-x-auto overflow-y-hidden bg-[#F8F9FA] relative">
+    <div className="flex-1 overflow-x-auto overflow-y-hidden bg-[#F8F9FA] relative snap-x snap-mandatory">
       {/* Premium subtle dot grid background */}
       <div className="absolute inset-0 z-0 pointer-events-none" style={{
         backgroundImage: 'radial-gradient(#E2E8F0 1px, transparent 1px)',
         backgroundSize: '24px 24px'
       }}></div>
 
-      <div className="h-full flex items-start gap-6 p-8 min-w-max relative z-10">
+      <div className="h-full flex items-start gap-4 md:gap-6 p-4 md:p-8 min-w-max relative z-10">
         <DragDropContext onDragEnd={onDragEnd}>
           {STATUSES.map(status => {
             const columnTickets = tickets
               .filter(t => t.status === status)
               .sort((a, b) => a.position - b.position);
-            
             return (
               <BoardColumn 
                 key={status} 
