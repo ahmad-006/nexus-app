@@ -76,7 +76,7 @@ const UserProfile = () => {
         message="Are you sure you want to end your session? You will need to log back in to access your workspace."
         confirmText="Sign Out"
         cancelText="Cancel"
-        isDestructive={true}
+        isDestructive={false}
       />
     </>
   );
