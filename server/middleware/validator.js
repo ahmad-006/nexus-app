@@ -65,14 +65,31 @@ export const ticketValidation = {
     .trim()
     .isLength({ min: 5, max: 100 })
     .withMessage("Title must be between 5 and 100 characters"),
+  updateTitle: body("title")
+    .optional()
+    .trim()
+    .isLength({ min: 5, max: 100 })
+    .withMessage("Title must be between 5 and 100 characters"),
+  
   description: body("description")
     .notEmpty()
     .trim()
     .isLength({ min: 10 })
-    .withMessage("Title must be atleast 10 characters long"),
+    .withMessage("Description must be atleast 10 characters long"),
+  updateDescription: body("description")
+    .optional()
+    .trim()
+    .isLength({ min: 10 })
+    .withMessage("Description must be atleast 10 characters long"),
+  
   priority: body("priority")
     .toUpperCase()
     .notEmpty()
+    .isIn(["LOW", "MEDIUM", "HIGH"])
+    .withMessage("Invalid Priority"),
+  updatePriority: body("priority")
+    .optional()
+    .toUpperCase()
     .isIn(["LOW", "MEDIUM", "HIGH"])
     .withMessage("Invalid Priority"),
   reporterId: check("reporterId").isMongoId().withMessage("Invalid Reporter"),

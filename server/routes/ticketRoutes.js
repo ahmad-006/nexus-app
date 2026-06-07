@@ -26,9 +26,9 @@ const ticketRouter = express.Router();
 ticketRouter.use('/:ticketId/comments', commentRouter);
 
 const ticketUpdateValidation = [
-  ticketValidation.title,
-  ticketValidation.description,
-  ticketValidation.priority,
+  ticketValidation.updateTitle,
+  ticketValidation.updateDescription,
+  ticketValidation.updatePriority,
   ticketValidation.optionalAssignee,
   ticketValidation.optionalStatus,
 ];
