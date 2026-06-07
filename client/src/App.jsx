@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import VerifyOtp from './pages/VerifyOtp';
 import Workspace from './components/kanban/Workspace';
+import TicketDetail from './pages/TicketDetail';
 import useAuthStore from './store/authStore';
 
 // Premium App Shell Skeleton for initial Auth check
@@ -69,6 +70,7 @@ function App() {
           {/* Protected Routes Wrapper */}
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<Workspace />} />
+            <Route path="/dashboard/ticket/:id" element={<TicketDetail />} />
             <Route path="/team" element={
               <div className="h-full w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white/50 flex items-center justify-center">
                 <p className="text-slate-400 font-medium tracking-wide">Team Management Canvas</p>
