@@ -13,10 +13,10 @@ const BoardColumn = ({ status, tickets }) => {
   const config = STATUS_CONFIG[status] || { label: status, dot: 'bg-slate-400' };
 
   return (
-    <div className="flex flex-col w-[280px] sm:w-[320px] md:w-[340px] shrink-0 snap-center bg-slate-50/50 rounded-2xl border border-slate-200/60 overflow-hidden shadow-sm">
+    <div className="flex flex-col w-[280px] sm:w-[320px] md:w-[340px] shrink-0 snap-center bg-slate-50/50 rounded-2xl border border-slate-200/60 overflow-hidden shadow-sm max-h-full">
       
       {/* Column Header */}
-      <div className="p-4 border-b border-slate-200/50 bg-white/50 backdrop-blur-md flex justify-between items-center sticky top-0 z-10">
+      <div className="p-4 border-b border-slate-200/50 bg-white/50 backdrop-blur-md flex justify-between items-center z-10 shrink-0">
         <div className="flex items-center gap-2.5">
           <div className={`w-2 h-2 rounded-full ${config.dot}`} />
           <h3 className="font-semibold text-slate-900 text-sm">
@@ -40,7 +40,7 @@ const BoardColumn = ({ status, tickets }) => {
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex-1 p-3 min-h-[500px] transition-colors duration-300 flex flex-col gap-3 ${
+            className={`flex-1 p-3 transition-colors duration-300 flex flex-col gap-3 overflow-y-auto custom-scrollbar ${
               snapshot.isDraggingOver ? 'bg-blue-50/30' : ''
             }`}
           >

@@ -140,7 +140,7 @@ const Workspace = () => {
         backgroundSize: '24px 24px'
       }}></div>
 
-      <div className="h-full flex items-start gap-4 md:gap-6 p-4 md:p-8 min-w-max relative z-10">
+      <div className="h-full flex items-stretch gap-4 md:gap-6 p-4 md:p-8 min-w-max relative z-10">
         <DragDropContext onDragEnd={onDragEnd}>
           {STATUSES.map(status => {
             const columnTickets = tickets
