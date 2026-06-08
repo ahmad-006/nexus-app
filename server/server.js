@@ -57,9 +57,9 @@ app.use(cookieParser());
 //NoSQL and XSS sanitization middleware
 app.use(nexusGuard);
 
-//request limiting so that 100 api requests are allowed in an hour
+//request limiting: strict in production, relaxed in development
 const limiter = rateLimit({
-  max: 100,
+  max: process.env.NODE_ENV === 'development' ? 10000 : 100,
   windowMs: 60 * 60 * 1000,
   message: "Too many requests from this IP, please try again in an hour!",
 });

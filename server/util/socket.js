@@ -82,6 +82,21 @@ export const socketManager = {
         console.log(`User ${socket.user.name} joined room: ${roomName}`);
       }
 
+      // 7. JOIN SPECIFIC TICKET ROOM (Called by frontend when opening a ticket)
+      socket.on("join_ticket", (ticketId) => {
+        if (!ticketId) return;
+        const roomName = `ticket_${ticketId}`;
+        socket.join(roomName);
+        console.log(`User ${socket.user.name} joined ticket room: ${roomName}`);
+      });
+      
+      socket.on("leave_ticket", (ticketId) => {
+        if (!ticketId) return;
+        const roomName = `ticket_${ticketId}`;
+        socket.leave(roomName);
+        console.log(`User ${socket.user.name} left ticket room: ${roomName}`);
+      });
+
       // --- TEAM CHAT LOGIC ---
       /**
        * @event send_team_message
