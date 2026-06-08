@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import TicketNarrative from '../components/ticket/TicketNarrative';
 import TicketSidebar from '../components/ticket/TicketSidebar';
 import TicketDetailSkeleton from '../components/ticket/TicketDetailSkeleton';
+import TicketActivity from '../components/ticket/TicketActivity';
 
 const TicketDetail = () => {
   const { id } = useParams();
@@ -103,14 +104,8 @@ const TicketDetail = () => {
               <TicketSidebar ticket={ticket} onUpdate={handleOptimisticUpdate} />
             </div>
 
-            {/* Activity / Comments Placeholder */}
-            <div className="flex flex-col gap-4 mt-2 pt-8 border-t border-slate-200/60 w-full max-w-4xl">
-              <h3 className="text-lg font-semibold text-slate-900">Activity Thread</h3>
-              <div className="bg-slate-50 border border-slate-200/60 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center">
-                <p className="text-slate-500 font-medium mb-1">Real-time collaboration incoming</p>
-                <p className="text-sm text-slate-400">The WebSocket comment thread will be mounted here in Phase 2.</p>
-              </div>
-            </div>
+            {/* Real-time Activity Thread */}
+            <TicketActivity ticketId={ticket._id} />
           </div>
 
           {/* Right Sidebar Group (Hidden on Mobile) */}
