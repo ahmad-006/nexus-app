@@ -4,6 +4,7 @@ import { Ticket } from "../models/Ticket.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 import { logActivity } from "./activityController.js";
+import { socketManager } from "../util/socket.js";
 
 /**
  * @desc    Get all top-level comments for a specific ticket
@@ -39,17 +40,42 @@ export const getComments = catchAsync(async (req, res, next) => {
           { $match: { $expr: { $eq: ["$parentCommentId", "$$commentId"] } } },
           { $sort: { createdAt: -1 } },
           { $limit: 2 },
+          {
+            $lookup: {
+              from: "users",
+              localField: "authorId",
+              foreignField: "_id",
+              as: "author"
+            }
+          },
+          { $unwind: "$author" },
+          {
+            $project: {
+              "author.password": 0,
+              "author.email": 0,
+              "author.teams": 0
+            }
+          }
         ],
         as: "replies",
       },
     },
     {
+      $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "parentCommentId",
+        as: "allReplies",
+      },
+    },
+    {
       $addFields: {
-        replyCount: { $size: "$replies" },
+        replyCount: { $size: "$allReplies" },
       },
     },
     {
       $project: {
+        "allReplies": 0,
         "author.password": 0,
         "author.email": 0,
         "author.teams": 0,
@@ -104,10 +130,25 @@ export const postComment = catchAsync(async (req, res, next) => {
     },
   });
 
+  // Prepare populated payload for Socket.io
+  const populatedComment = {
+    ...comment.toObject(),
+    author: {
+      _id: req.user.id,
+      name: req.user.name,
+      avatar: req.user.avatar,
+    },
+    replies: [],
+    replyCount: 0
+  };
+
+  // Broadcast to anyone in the ticket room
+  socketManager.getIO().to(`ticket_${ticketId}`).emit("receive_comment", populatedComment);
+
   return res.status(201).json({
     status: "success",
     data: {
-      comment,
+      comment: populatedComment,
     },
   });
 });
@@ -132,6 +173,15 @@ export const patchComment = catchAsync(async (req, res, next) => {
   comment.text = text;
   comment.isEdited = true;
   await comment.save();
+  
+  // Broadcast edit to ticket room
+  socketManager.getIO().to(`ticket_${comment.ticketId}`).emit("update_comment", {
+    _id: comment._id,
+    text: comment.text,
+    isEdited: true,
+    parentCommentId: comment.parentCommentId
+  });
+
   return res.status(200).json({
     status: "success",
     data: {
@@ -155,6 +205,12 @@ export const deleteComment = catchAsync(async (req, res, next) => {
       new AppError("You are not authorized to delete this comment", 403),
     );
   await Comment.findByIdAndDelete(commentId);
+
+  // Broadcast deletion to ticket room
+  socketManager.getIO().to(`ticket_${comment.ticketId}`).emit("delete_comment", {
+    _id: commentId,
+    parentCommentId: comment.parentCommentId
+  });
 
   return res.status(204).json({ status: "success", data: null });
 });
@@ -205,6 +261,55 @@ export const getReplies = catchAsync(async (req, res, next) => {
         "author.resetToken": 0,
         "author.resetTokenExpiration": 0,
         "author.__v": 0,
+      },
+    },
+    {
+      $unwind: { path: "$replies", preserveNullAndEmptyArrays: true },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "replies.authorId",
+        foreignField: "_id",
+        as: "replies.author",
+      },
+    },
+    {
+      $unwind: { path: "$replies.author", preserveNullAndEmptyArrays: true },
+    },
+    {
+      $project: {
+        "replies.author.password": 0,
+        "replies.author.email": 0,
+        "replies.author.teams": 0,
+        "replies.author.passwordChangedAt": 0,
+        "replies.author.resetToken": 0,
+        "replies.author.resetTokenExpiration": 0,
+        "replies.author.__v": 0,
+      },
+    },
+    {
+      $sort: { "replies.createdAt": 1 }
+    },
+    {
+      $group: {
+        _id: "$_id",
+        ticketId: { $first: "$ticketId" },
+        text: { $first: "$text" },
+        type: { $first: "$type" },
+        createdAt: { $first: "$createdAt" },
+        isEdited: { $first: "$isEdited" },
+        author: { $first: "$author" },
+        replyCount: { $first: "$replyCount" },
+        replies: { 
+          $push: {
+            $cond: [
+              { $ifNull: ["$replies._id", false] },
+              "$replies",
+              "$$REMOVE"
+            ]
+          }
+        },
       },
     },
   ]);
