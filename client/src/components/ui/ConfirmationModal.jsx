@@ -1,9 +1,12 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, X } from 'lucide-react';
 import PropTypes from 'prop-types';
+import ReactDOM from 'react-dom';
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirm", cancelText = "Cancel", isDestructive = false }) => {
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return ReactDOM.createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -67,7 +70,8 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
           </div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
