@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, ArrowDown, Hexagon, Search, Shield, Zap, CheckCircle2, Clock, MessageSquare, AlignLeft, Users, History } from 'lucide-react';
+import nexusLogo from '../assets/nexus_logo.png';
+import nexusIcon from '../assets/nexus_icon.png';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -23,8 +25,7 @@ const Landing = () => {
       <nav className="fixed top-0 inset-x-0 z-50 bg-[#FAFAFA]/80 backdrop-blur-md border-b border-slate-200/50">
         <div className="mx-auto flex h-16 sm:h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-12">
           <div className="flex items-center gap-2 sm:gap-3">
-            <Hexagon className="h-5 w-5 sm:h-6 sm:w-6 text-slate-900" strokeWidth={2.5} />
-            <span className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-slate-900">NEXUS</span>
+            <img src={nexusLogo} alt="Nexus" className="h-6 sm:h-7 object-contain" />
           </div>
           <div className="flex items-center gap-4 sm:gap-6">
             <Link to="/login" className="text-xs sm:text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">
@@ -399,7 +400,7 @@ const Landing = () => {
             className="mx-auto max-w-3xl relative z-10"
          >
             <motion.div variants={fadeIn}>
-              <Hexagon className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-slate-400 mb-6 sm:mb-8" strokeWidth={2} />
+              <img src={nexusIcon} alt="Nexus" className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-6 sm:mb-8 object-contain opacity-70 grayscale" />
             </motion.div>
             <motion.h2 variants={fadeIn} className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-8 sm:mb-10 px-2 text-white">
                Ready to reclaim your focus?
@@ -420,8 +421,7 @@ const Landing = () => {
         <div className="mx-auto max-w-7xl grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12 mb-12 sm:mb-16">
            <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4 sm:mb-6">
-                <Hexagon className="h-5 w-5 sm:h-6 sm:w-6 text-slate-900" strokeWidth={2.5} />
-                <span className="font-serif text-lg sm:text-xl font-bold tracking-tight text-slate-900">NEXUS</span>
+                <img src={nexusLogo} alt="Nexus" className="h-5 sm:h-6 object-contain" />
               </div>
               <p className="text-xs sm:text-sm text-slate-500 font-light leading-relaxed mb-6">
                 The classically crafted workspace engineered for elite teams who refuse to compromise.

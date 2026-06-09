@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Hexagon } from 'lucide-react';
+import nexusIcon from '../../assets/nexus_icon.png';
 
 const PageLoader = () => {
   return (
@@ -17,12 +17,12 @@ const PageLoader = () => {
             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
             className="absolute inset-[-15px] rounded-full border border-slate-200 border-t-slate-400"
           />
-          {/* Inner pulsing Hexagon */}
+          {/* Inner pulsing Icon */}
           <motion.div
             animate={{ scale: [1, 1.1, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           >
-            <Hexagon className="h-10 w-10 text-slate-900" strokeWidth={2} />
+            <img src={nexusIcon} alt="Nexus Loading" className="h-10 w-10 object-contain opacity-90" />
           </motion.div>
         </div>
         

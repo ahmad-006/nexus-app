@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Hexagon, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
+import nexusLogo from '../assets/nexus_logo.png';
 import useAuthStore from '../store/authStore';
 
 const Login = () => {
@@ -35,8 +36,7 @@ const Login = () => {
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-slate-200/50 via-transparent to-transparent"></div>
         
         <Link to="/" className="relative z-10 flex items-center gap-3 hover:opacity-90 transition-opacity w-fit">
-          <Hexagon className="h-8 w-8 text-slate-900" strokeWidth={2.5} />
-          <span className="font-serif text-3xl font-bold tracking-tight text-slate-900">NEXUS</span>
+          <img src={nexusLogo} alt="Nexus" className="h-8 object-contain" />
         </Link>
 
         <div className="relative z-10 max-w-lg">
@@ -57,8 +57,7 @@ const Login = () => {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 overflow-y-auto">
         <div className="w-full max-w-md py-8">
           <Link to="/" className="lg:hidden flex items-center gap-3 mb-12 hover:opacity-80 transition-opacity w-fit">
-            <Hexagon className="h-8 w-8 text-blue-900" strokeWidth={2.5} />
-            <span className="font-serif text-3xl font-bold tracking-tight text-blue-900">NEXUS</span>
+            <img src={nexusLogo} alt="Nexus" className="h-8 object-contain" />
           </Link>
 
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome back</h1>
@@ -81,7 +80,7 @@ const Login = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-sm bg-white text-slate-900 focus:outline-none focus:border-blue-900 focus:ring-1 focus:ring-blue-900 transition-colors"
+                className="w-full px-4 py-3 border border-slate-200 rounded-sm bg-white text-slate-900 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-colors"
                 placeholder="you@company.com"
               />
             </div>
@@ -91,7 +90,7 @@ const Login = () => {
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider" htmlFor="password">
                   Password
                 </label>
-                <Link to="/forgot-password" className="text-xs font-medium text-blue-900 hover:underline">
+                <Link to="/forgot-password" className="text-xs font-medium text-slate-900 hover:underline">
                   Forgot password?
                 </Link>
               </div>
@@ -102,7 +101,7 @@ const Login = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-4 pr-12 py-3 border border-slate-200 rounded-sm bg-white text-slate-900 focus:outline-none focus:border-blue-900 focus:ring-1 focus:ring-blue-900 transition-colors"
+                  className="w-full pl-4 pr-12 py-3 border border-slate-200 rounded-sm bg-white text-slate-900 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-colors"
                   placeholder="••••••••"
                 />
                 <button
@@ -119,7 +118,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="mt-2 w-full flex items-center justify-center gap-2 bg-blue-900 text-white py-3.5 font-bold rounded-sm hover:bg-blue-800 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+              className="mt-2 w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-3.5 font-bold rounded-sm hover:bg-slate-800 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -133,7 +132,7 @@ const Login = () => {
 
           <p className="mt-8 text-center text-sm text-slate-500">
             Don't have an account?{' '}
-            <Link to="/signup" className="font-bold text-blue-900 hover:underline">
+            <Link to="/signup" className="font-bold text-slate-900 hover:underline">
               Start for free
             </Link>
           </p>

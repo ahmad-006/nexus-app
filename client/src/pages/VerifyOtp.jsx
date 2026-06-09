@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Hexagon, Loader2, ArrowLeft } from 'lucide-react';
+import nexusLogo from '../assets/nexus_logo.png';
 import useAuthStore from '../store/authStore';
 
 const VerifyOtp = () => {
@@ -71,8 +72,7 @@ const VerifyOtp = () => {
         <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-slate-200/50 via-transparent to-transparent"></div>
         
         <Link to="/" className="relative z-10 flex items-center gap-3 hover:opacity-90 transition-opacity w-fit">
-          <Hexagon className="h-8 w-8 text-slate-900" strokeWidth={2.5} />
-          <span className="font-serif text-3xl font-bold tracking-tight text-slate-900">NEXUS</span>
+          <img src={nexusLogo} alt="Nexus" className="h-8 object-contain" />
         </Link>
 
         <div className="relative z-10 max-w-lg">
@@ -93,11 +93,10 @@ const VerifyOtp = () => {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 overflow-y-auto">
         <div className="w-full max-w-md py-8">
           <Link to="/" className="lg:hidden flex items-center gap-3 mb-12 hover:opacity-80 transition-opacity w-fit">
-            <Hexagon className="h-8 w-8 text-blue-900" strokeWidth={2.5} />
-            <span className="font-serif text-3xl font-bold tracking-tight text-blue-900">NEXUS</span>
+            <img src={nexusLogo} alt="Nexus" className="h-8 object-contain" />
           </Link>
 
-          <Link to="/login" className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-blue-900 uppercase tracking-wider mb-8 transition-colors">
+          <Link to="/login" className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-900 uppercase tracking-wider mb-8 transition-colors">
             <ArrowLeft size={14} /> Back to Login
           </Link>
 
@@ -131,7 +130,7 @@ const VerifyOtp = () => {
                 maxLength={6}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                className="w-full px-4 py-4 border border-slate-200 rounded-sm bg-white text-slate-900 text-2xl font-bold tracking-[0.5em] text-center focus:outline-none focus:border-blue-900 focus:ring-1 focus:ring-blue-900 transition-colors"
+                className="w-full px-4 py-4 border border-slate-200 rounded-sm bg-white text-slate-900 text-2xl font-bold tracking-[0.5em] text-center focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-colors"
                 placeholder="------"
               />
             </div>
@@ -139,7 +138,7 @@ const VerifyOtp = () => {
             <button
               type="submit"
               disabled={isLoading || otp.length !== 6}
-              className="w-full bg-blue-900 text-white font-bold py-3.5 rounded-sm hover:bg-blue-800 transition-all flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-sm hover:bg-slate-800 transition-all flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify Account"}
             </button>
@@ -150,7 +149,7 @@ const VerifyOtp = () => {
             <button
               onClick={handleResend}
               disabled={!canResend || isLoading}
-              className={`font-medium ${canResend ? 'text-blue-900 hover:underline cursor-pointer' : 'text-slate-400 cursor-not-allowed'}`}
+              className={`font-medium ${canResend ? 'text-slate-900 hover:underline cursor-pointer' : 'text-slate-400 cursor-not-allowed'}`}
             >
               {canResend ? 'Click to resend' : `Resend in ${countdown}s`}
             </button>

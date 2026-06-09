@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Hexagon, LayoutDashboard, Users, BarChart3, Settings, LogOut } from 'lucide-react';
+import nexusLogo from '../../../assets/nexus_logo.png';
+import nexusIcon from '../../../assets/nexus_icon.png';
 import useAuthStore from '../../../store/authStore';
 import ConfirmationModal from '../../ui/ConfirmationModal';
 
@@ -37,10 +39,11 @@ const FloatingDock = () => {
       >
         {/* Logo (Hidden on mobile bottom bar) */}
         <div className={`hidden lg:flex items-center gap-3 mb-8 transition-all duration-300 w-full ${isHovered ? 'px-2 justify-start' : 'justify-center'}`}>
-          <Hexagon className="h-7 w-7 text-slate-900 shrink-0" strokeWidth={2.5} />
-          <span className={`font-serif text-xl font-bold tracking-tight text-slate-900 transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 hidden'}`}>
-            NEXUS
-          </span>
+          <img 
+            src={isHovered ? nexusLogo : nexusIcon} 
+            alt="Nexus" 
+            className={`transition-all duration-300 object-contain ${isHovered ? 'h-6' : 'h-7'}`}
+          />
         </div>
 
         {/* Navigation Links */}
