@@ -9,6 +9,8 @@ import {
   assignToUser,
   getStats,
   patchReorderTicket,
+  postTicketAttachments,
+  uploadTicketFiles,
 } from '../controllers/ticketController.js';
 import {
   isMember,
@@ -99,5 +101,10 @@ ticketRouter
     validate,
     patchReorderTicket,
   );
+
+// Uploading attachments to a ticket
+ticketRouter
+  .route('/:ticketId/attachments')
+  .post(protect, isMember, uploadTicketFiles, postTicketAttachments);
 
 export { ticketRouter };
