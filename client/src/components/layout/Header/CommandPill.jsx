@@ -4,10 +4,12 @@ import { useLocation } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 import UserProfile from './UserProfile';
 import useTeamStore from '../../../store/teamStore';
+import { useMyTeams } from '../../../hooks/useTeams';
 
 const CommandPill = () => {
   const location = useLocation();
-  const { activeTeam, myTeams, setActiveTeam } = useTeamStore();
+  const { teams: myTeams, activeTeam } = useMyTeams();
+  const { setActiveTeam } = useTeamStore();
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);

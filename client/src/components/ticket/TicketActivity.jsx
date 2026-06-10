@@ -1,23 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageSquare, Trash2, Edit2, Activity, CornerDownRight, MessageCircle } from 'lucide-react';
+import { Send, MessageSquare, Trash2, Edit2, Activity, CornerDownRight, MessageCircle, Smile } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { socket } from '../../api/socket';
 import useAuthStore from '../../store/authStore';
 import { toast } from 'sonner';
+import { useTicketComments, useAddComment, useDeleteComment } from '../../hooks/useTickets';
+import { ticketKeys } from '../../api/queryKeys';
 
-const TicketActivity = ({ ticketId }) => {
+const TicketActivity = ({ ticketId, teamId }) => {
   const { user } = useAuthStore();
-  const [comments, setComments] = useState([]);
+  const queryClient = useQueryClient();
+
+  const { data: comments = [], isLoading } = useTicketComments(ticketId);
+  const addCommentMutation = useAddComment(ticketId, teamId);
+  const deleteCommentMutation = useDeleteComment(ticketId, teamId);
+
   const [newComment, setNewComment] = useState('');
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const commentInputRef = useRef(null);
   
   // Reply State
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
-  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const replyInputRef = useRef(null);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmitting = addCommentMutation.isPending && !replyingTo;
+  const isSubmittingReply = addCommentMutation.isPending && !!replyingTo;
+
   const [filterMode, setFilterMode] = useState('ALL'); // 'ALL' | 'COMMENTS'
   const [fetchingReplies, setFetchingReplies] = useState({});
 
@@ -29,34 +39,18 @@ const TicketActivity = ({ ticketId }) => {
   }, [replyingTo]);
 
   useEffect(() => {
-    let mounted = true;
-    
     if (!socket.connected) {
       socket.connect();
     }
 
-    const fetchComments = async () => {
-      try {
-        const res = await api.get(`/tickets/${ticketId}/comments`);
-        if (mounted) {
-          setComments(res.data.data.comments);
-        }
-      } catch (err) {
-        if (mounted) toast.error('Failed to load comments');
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-
-    fetchComments();
     socket.emit('join_ticket', ticketId);
 
     const handleReceiveComment = (newCommentData) => {
-      setComments(prev => {
+      queryClient.setQueryData(ticketKeys.comments(ticketId), (prev = []) => {
         if (prev.some(c => c._id === newCommentData._id)) return prev;
         
         if (!newCommentData.parentCommentId) {
-          return [...prev, newCommentData]; // Append to bottom since input is at bottom now
+          return [newCommentData, ...prev]; // Prepend to top since input is at the top (newest first)
         }
         
         return prev.map(c => {
@@ -73,16 +67,20 @@ const TicketActivity = ({ ticketId }) => {
     };
 
     const handleUpdateComment = (updatedData) => {
-      setComments(prev => prev.map(c => {
-        if (c._id === updatedData._id) {
-          return { ...c, text: updatedData.text, isEdited: true };
-        }
-        return c;
-      }));
+      queryClient.setQueryData(ticketKeys.comments(ticketId), (prev = []) =>
+        prev.map(c => {
+          if (c._id === updatedData._id) {
+            return { ...c, text: updatedData.text, isEdited: true };
+          }
+          return c;
+        })
+      );
     };
 
     const handleDeleteComment = (deletedData) => {
-      setComments(prev => prev.filter(c => c._id !== deletedData._id));
+      queryClient.setQueryData(ticketKeys.comments(ticketId), (prev = []) =>
+        prev.filter(c => c._id !== deletedData._id)
+      );
     };
 
     socket.on('receive_comment', handleReceiveComment);
@@ -90,56 +88,50 @@ const TicketActivity = ({ ticketId }) => {
     socket.on('delete_comment', handleDeleteComment);
 
     return () => {
-      mounted = false;
       socket.emit('leave_ticket', ticketId);
       socket.off('receive_comment', handleReceiveComment);
       socket.off('update_comment', handleUpdateComment);
       socket.off('delete_comment', handleDeleteComment);
     };
-  }, [ticketId]);
+  }, [ticketId, queryClient]);
 
-  // Flip sorting since input is at the bottom (oldest first, newest at bottom)
-  const sortedComments = [...comments].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  // Sort newest first (matches YouTube and top-input layout)
+  const sortedComments = [...comments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const filteredComments = sortedComments.filter(c => {
     if (filterMode === 'COMMENTS') return c.type !== 'system';
     return true;
   });
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
+    if (e) e.preventDefault();
+    if (!newComment.trim() || isSubmitting) return;
 
-    setIsSubmitting(true);
     try {
-      await api.post(`/tickets/${ticketId}/comments`, { text: newComment.trim() });
+      await addCommentMutation.mutateAsync({ text: newComment.trim() });
       setNewComment('');
+      setIsInputFocused(false);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to post comment');
-    } finally {
-      setIsSubmitting(false);
+      // Error handled in mutation
     }
   };
 
   const handleReplySubmit = async (parentId) => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim() || isSubmittingReply) return;
     
-    setIsSubmittingReply(true);
     try {
-      await api.post(`/tickets/${ticketId}/comments`, { text: replyText.trim(), commentId: parentId });
+      await addCommentMutation.mutateAsync({ text: replyText.trim(), parentId });
       setReplyText('');
       setReplyingTo(null);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to post reply');
-    } finally {
-      setIsSubmittingReply(false);
+      // Error handled in mutation
     }
   };
 
   const handleDelete = async (commentId) => {
     try {
-      await api.delete(`/comments/${commentId}`);
+      await deleteCommentMutation.mutateAsync(commentId);
     } catch (err) {
-      toast.error('Failed to delete comment');
+      // Error handled in mutation
     }
   };
 
@@ -149,16 +141,18 @@ const TicketActivity = ({ ticketId }) => {
       const res = await api.get(`/comments/${commentId}/replies`);
       const thread = res.data.data.thread;
       
-      setComments(prev => prev.map(c => {
-        if (c._id === commentId) {
-          return {
-            ...c,
-            replies: thread.replies,
-            isFullyExpanded: true
-          };
-        }
-        return c;
-      }));
+      queryClient.setQueryData(ticketKeys.comments(ticketId), (prev = []) =>
+        prev.map(c => {
+          if (c._id === commentId) {
+            return {
+              ...c,
+              replies: thread.replies,
+              isFullyExpanded: true
+            };
+          }
+          return c;
+        })
+      );
     } catch (err) {
       toast.error('Failed to load full reply thread');
     } finally {
@@ -172,7 +166,7 @@ const TicketActivity = ({ ticketId }) => {
     });
   };
 
-  if (isLoading) {
+  if (isLoading && comments.length === 0) {
     return (
       <div className="flex flex-col gap-6 mt-2 pt-8 border-t border-slate-200/60 w-full max-w-4xl animate-pulse">
         <h3 className="text-lg font-semibold text-slate-900">Activity Thread</h3>
@@ -202,7 +196,12 @@ const TicketActivity = ({ ticketId }) => {
       
       {/* Header & Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h3 className="text-lg font-semibold text-slate-900">Activity Thread</h3>
+        <div className="flex items-center gap-2.5">
+          <h3 className="text-lg font-semibold text-slate-900">Activity Thread</h3>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60">
+            {filteredComments.length}
+          </span>
+        </div>
         <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200/60">
           <button
             onClick={() => setFilterMode('ALL')}
@@ -216,6 +215,76 @@ const TicketActivity = ({ ticketId }) => {
           >
             Comments Only
           </button>
+        </div>
+      </div>
+
+      {/* YouTube-Style Comment Input Box (At Top) */}
+      <div className="flex gap-3 md:gap-4 mb-8">
+        {/* User Avatar */}
+        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-slate-200 overflow-hidden shrink-0 mt-0.5 border border-slate-300/50 shadow-sm">
+          {user?.avatar ? (
+            <img src={user.avatar} alt="You" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
+            </div>
+          )}
+        </div>
+
+        {/* Input Field & YouTube-style Underline */}
+        <div className="flex-1 flex flex-col">
+          <form onSubmit={handleSubmit}>
+            <div className="relative">
+              <textarea
+                ref={commentInputRef}
+                value={newComment}
+                onFocus={() => setIsInputFocused(true)}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
+                rows={isInputFocused || newComment.length > 0 ? 2 : 1}
+                className={`w-full bg-transparent text-[14px] md:text-[15px] text-slate-800 placeholder-slate-400 focus:outline-none resize-none transition-all py-1 ${
+                  isInputFocused || newComment.length > 0
+                    ? 'border-b-2 border-slate-900 min-h-[56px]'
+                    : 'border-b border-slate-300 min-h-[36px]'
+                }`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+              />
+            </div>
+
+            {/* Action Row (Appears when focused or has text, exactly like YouTube) */}
+            {(isInputFocused || newComment.length > 0) && (
+              <div className="flex items-center justify-between mt-2 pt-1 animate-in fade-in duration-150">
+                <div className="flex items-center text-slate-400 hover:text-slate-600 transition-colors">
+                  <Smile className="w-5 h-5 cursor-pointer" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewComment('');
+                      setIsInputFocused(false);
+                    }}
+                    disabled={isSubmitting}
+                    className="px-3.5 py-1.5 text-xs md:text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !newComment.trim()}
+                    className="px-4 py-1.5 bg-slate-900 text-white rounded-full font-medium text-xs md:text-sm hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 transition-all shadow-sm flex items-center gap-1.5"
+                  >
+                    {isSubmitting ? 'Posting...' : 'Comment'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </form>
         </div>
       </div>
 
@@ -233,17 +302,19 @@ const TicketActivity = ({ ticketId }) => {
             // SYSTEM EVENT
             if (comment.type === 'system') {
               return (
-                <div key={comment._id} className="flex gap-3 md:gap-4 items-start group">
-                  <div className="w-8 md:w-10 flex flex-col items-center shrink-0">
-                    <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 shadow-sm">
-                      <Activity className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-400" />
-                    </div>
-                    {/* Only draw vertical connector if it's not the absolute last item in the thread */}
-                    {index !== filteredComments.length - 1 && <div className="w-0.5 h-full bg-slate-100 mt-2"></div>}
+                <div key={comment._id} className="flex gap-3 md:gap-4 items-start group relative">
+                  {/* Timeline Axis (Subtle Dot + Vertical Line) */}
+                  <div className="w-8 md:w-10 flex flex-col items-center shrink-0 self-stretch relative">
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-2 z-10 ring-4 ring-[#F8F9FA]"></div>
+                    {index !== filteredComments.length - 1 && (
+                      <div className="w-0.5 h-full bg-slate-200/60 absolute top-2"></div>
+                    )}
                   </div>
-                  <div className="flex-1 pb-6 pt-1 md:pt-1.5 flex items-center">
-                    <span className="text-[13px] md:text-[14px] text-slate-500 font-medium leading-tight">{comment.text}</span>
-                    <span className="text-[11px] text-slate-400 ml-2 shrink-0">{formatTime(comment.createdAt)}</span>
+                  
+                  {/* Content */}
+                  <div className="flex-1 flex items-center pb-4 pt-0.5">
+                    <span className="text-xs text-slate-400 font-medium">{comment.text}</span>
+                    <span className="text-[10px] text-slate-300 ml-2 shrink-0">{formatTime(comment.createdAt)}</span>
                   </div>
                 </div>
               );
@@ -296,7 +367,7 @@ const TicketActivity = ({ ticketId }) => {
                         setReplyingTo(isReplying ? null : comment._id);
                         setReplyText('');
                       }}
-                      className={`flex items-center gap-1.5 text-xs font-semibold transition-colors ${isReplying ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}
+                      className={`flex items-center gap-1.5 text-xs font-semibold transition-colors ${isReplying ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'}`}
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                       Reply
@@ -339,7 +410,7 @@ const TicketActivity = ({ ticketId }) => {
                         <button 
                           onClick={() => handleFetchReplies(comment._id)}
                           disabled={fetchingReplies[comment._id]}
-                          className="text-[13px] font-medium text-blue-600 hover:text-blue-700 self-start disabled:opacity-50 mt-1"
+                          className="text-[13px] font-medium text-slate-900 hover:text-slate-800 self-start disabled:opacity-50 mt-1"
                         >
                           {fetchingReplies[comment._id] ? 'Loading...' : `View all ${comment.replyCount} replies`}
                         </button>
@@ -354,7 +425,7 @@ const TicketActivity = ({ ticketId }) => {
                         {user?.avatar ? (
                           <img src={user.avatar} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-[10px]">
+                          <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-800 font-bold text-[10px]">
                             {user?.name?.charAt(0).toUpperCase()}
                           </div>
                         )}
@@ -365,7 +436,7 @@ const TicketActivity = ({ ticketId }) => {
                           value={replyText}
                           onChange={(e) => setReplyText(e.target.value)}
                           placeholder={`Reply to ${comment.author?.name?.split(' ')[0] || 'comment'}...`}
-                          className="w-full min-h-[80px] bg-white border border-slate-300 rounded-lg p-3 text-[14px] text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all resize-none shadow-sm"
+                          className="w-full min-h-[80px] bg-white border border-slate-300 rounded-lg p-3 text-[14px] text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/50 focus:border-slate-900 transition-all resize-none shadow-sm"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                               e.preventDefault();
@@ -386,7 +457,7 @@ const TicketActivity = ({ ticketId }) => {
                           <button
                             onClick={() => handleReplySubmit(comment._id)}
                             disabled={isSubmittingReply || !replyText.trim()}
-                            className="px-3 py-1 bg-blue-600 text-white rounded-md font-medium text-xs flex items-center gap-1.5 hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+                            className="px-3 py-1 bg-slate-900 text-white rounded-md font-medium text-xs flex items-center gap-1.5 hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
                           >
                             {isSubmittingReply ? 'Replying...' : 'Reply'}
                           </button>
@@ -400,46 +471,6 @@ const TicketActivity = ({ ticketId }) => {
             )
           })
         )}
-      </div>
-
-      {/* Main Bottom Input Box (Sticky on Mobile) */}
-      <div className="sticky bottom-0 bg-white/90 backdrop-blur-xl border-t border-slate-200 pt-4 pb-4 px-2 -mx-2 z-20">
-        <form onSubmit={handleSubmit} className="flex gap-3 md:gap-4 relative max-w-4xl mx-auto">
-          <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-200 overflow-hidden shrink-0 mt-1 border border-slate-300/50 shadow-sm hidden sm:block">
-            {user?.avatar ? (
-              <img src={user.avatar} alt="You" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
-                {user?.name?.charAt(0).toUpperCase()}
-              </div>
-            )}
-          </div>
-          <div className="flex-1 relative">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add a new comment..."
-              className="w-full min-h-[80px] md:min-h-[100px] bg-white border border-slate-300 rounded-xl p-3 md:p-4 text-[14px] md:text-[15px] text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all resize-none shadow-sm"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }}
-            />
-            <div className="absolute bottom-2 right-2 md:bottom-3 md:right-3 flex items-center gap-2">
-              <span className="text-[11px] md:text-xs font-medium text-slate-400 hidden sm:inline-block">Press Enter to send</span>
-              <button
-                type="submit"
-                disabled={isSubmitting || !newComment.trim()}
-                className="px-3 md:px-4 py-1.5 bg-slate-900 text-white rounded-lg font-medium text-xs md:text-sm flex items-center gap-2 hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
-              >
-                <Send className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                {isSubmitting ? 'Sending...' : 'Send'}
-              </button>
-            </div>
-          </div>
-        </form>
       </div>
 
     </div>

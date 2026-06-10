@@ -1,19 +1,12 @@
 import { Outlet, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
 import FloatingDock from './Sidebar/FloatingDock';
 import CommandPill from './Header/CommandPill';
 import useAuthStore from '../../store/authStore';
-import useTeamStore from '../../store/teamStore';
+import { useMyTeams } from '../../hooks/useTeams';
 
 const DashboardLayout = () => {
   const { user, isAuthenticated } = useAuthStore();
-  const { fetchMyTeams } = useTeamStore();
-
-  useEffect(() => {
-    if (isAuthenticated && user?.isVerified) {
-      fetchMyTeams();
-    }
-  }, [isAuthenticated, user?.isVerified, fetchMyTeams]);
+  useMyTeams({ enabled: isAuthenticated && !!user?.isVerified });
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
