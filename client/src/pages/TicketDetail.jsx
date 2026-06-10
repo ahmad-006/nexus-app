@@ -1,59 +1,67 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
-import api from '../api/axios';
-import { toast } from 'sonner';
+import React, { useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Trash2 } from 'lucide-react';
+import useAuthStore from '../store/authStore';
+import useTeamStore from '../store/teamStore';
+import ConfirmationModal from '../components/ui/ConfirmationModal';
 import TicketNarrative from '../components/ticket/TicketNarrative';
 import TicketSidebar from '../components/ticket/TicketSidebar';
 import TicketDetailSkeleton from '../components/ticket/TicketDetailSkeleton';
 import TicketActivity from '../components/ticket/TicketActivity';
+import { useTicketDetail, useUpdateTicket, useDeleteTicket } from '../hooks/useTickets';
+import { useQueryClient } from '@tanstack/react-query';
+import { ticketKeys } from '../api/queryKeys';
 
 const TicketDetail = () => {
   const { id } = useParams();
-  const [ticket, setTicket] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const { activeTeam } = useTeamStore();
 
-  useEffect(() => {
-    const fetchTicket = async () => {
-      try {
-        setIsLoading(true);
-        const response = await api.get(`/tickets/${id}`);
-        setTicket(response.data.data.ticket);
-      } catch (err) {
-        console.error("Failed to fetch ticket:", err);
-        setError("Could not load ticket details.");
-        toast.error("Ticket not found or access denied.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    if (id) fetchTicket();
-  }, [id]);
+  const { data: ticket, isLoading, error } = useTicketDetail(id, activeTeam?._id);
+  const updateTicketMutation = useUpdateTicket(id, activeTeam?._id);
+  const deleteTicketMutation = useDeleteTicket(id, activeTeam?._id);
 
-  const handleOptimisticUpdate = async (updateData) => {
-    // Save previous state for rollback
-    const previousTicket = { ...ticket };
-    
-    // Optimistic UI Update
-    setTicket(prev => ({ ...prev, ...updateData }));
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+  const currentMember = activeTeam?.members?.find(m => 
+    (m.userId?._id === user?._id) || (m.userId === user?._id)
+  );
+  const isReporter = ticket?.reporterId === user?._id;
+  const canDelete = isReporter || (currentMember && ['admin', 'owner'].includes(currentMember.role));
+
+  const handleDeleteTicket = async () => {
     try {
-      if (updateData.status) {
-        await api.patch(`/tickets/${id}/status`, { status: updateData.status });
-      } else {
-        await api.patch(`/tickets/${id}`, updateData);
-      }
-      toast.success("Ticket updated");
+      await deleteTicketMutation.mutateAsync();
+      setIsDeleteModalOpen(false);
+      navigate("/dashboard");
     } catch (err) {
-      console.error("Update failed:", err);
-      // Rollback
-      setTicket(previousTicket);
-      toast.error(err.response?.data?.message || "Failed to update ticket");
+      // Handled in mutation
     }
   };
 
-  if (isLoading) {
+  const handleOptimisticUpdate = async (updateData) => {
+    // If updating attachments, update cache directly since they are already saved via POST /attachments
+    if (updateData.attachments) {
+      queryClient.setQueryData(ticketKeys.detail(id), (prev) => {
+        if (!prev) return prev;
+        return { ...prev, attachments: updateData.attachments };
+      });
+      if (activeTeam?._id) {
+        queryClient.setQueryData(ticketKeys.list(activeTeam._id), (prevTickets = []) => {
+          return prevTickets.map((t) =>
+            t._id === id ? { ...t, attachments: updateData.attachments } : t
+          );
+        });
+      }
+      return;
+    }
+
+    updateTicketMutation.mutate(updateData);
+  };
+
+  if (isLoading && !ticket) {
     return <TicketDetailSkeleton />;
   }
 
@@ -81,15 +89,30 @@ const TicketDetail = () => {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
         
-        {/* Top Navigation */}
-        <div>
-          <Link 
-            to="/dashboard" 
-            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-slate-200/60 shadow-sm"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Board
-          </Link>
+        {/* Consolidated Top Navigation */}
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-3 text-sm font-medium text-slate-500">
+            <Link 
+              to="/dashboard" 
+              className="inline-flex items-center gap-2 hover:text-slate-900 transition-colors bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-slate-200/60 shadow-sm"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Board
+            </Link>
+            <span className="text-slate-300">|</span>
+            <span className="hover:text-slate-900 cursor-pointer transition-colors">Workspace</span>
+            <span className="text-slate-300">/</span>
+            <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600">
+              {`NEX-${ticket._id.substring(ticket._id.length - 4).toUpperCase()}`}
+            </span>
+          </div>
+
+          {canDelete && (
+            <button onClick={() => setIsDeleteModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200">
+              <Trash2 className="w-4 h-4" />
+              Delete Ticket
+            </button>
+          )}
         </div>
 
         {/* 70/30 Split Layout */}
@@ -105,7 +128,7 @@ const TicketDetail = () => {
             </div>
 
             {/* Real-time Activity Thread */}
-            <TicketActivity ticketId={ticket._id} />
+            <TicketActivity ticketId={ticket._id} teamId={activeTeam?._id} />
           </div>
 
           {/* Right Sidebar Group (Hidden on Mobile) */}
@@ -116,6 +139,16 @@ const TicketDetail = () => {
         </div>
 
       </div>
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteTicket}
+        title="Delete Ticket"
+        message={`Are you sure you want to delete this ticket? This action cannot be undone.`}
+        confirmText={deleteTicketMutation.isPending ? "Deleting..." : "Delete"}
+        isDestructive={true}
+      />
     </div>
   );
 };

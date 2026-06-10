@@ -9,6 +9,7 @@ import VerifyOtp from './pages/VerifyOtp';
 import Workspace from './components/kanban/Workspace';
 import TicketDetail from './pages/TicketDetail';
 import useAuthStore from './store/authStore';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 // Premium App Shell Skeleton for initial Auth check
 const AppShellSkeleton = () => (
@@ -50,6 +51,7 @@ function App() {
       <Toaster position="bottom-right" toastOptions={{
         className: 'bg-slate-900 text-white border-slate-800 shadow-xl font-medium rounded-lg',
       }} />
+      <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
       {/* Global clean background */}
       <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col">
         <Routes>
