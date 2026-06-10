@@ -1,3 +1,4 @@
+import React, { useRef, useEffect } from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import TicketCard from './TicketCard';
 import PropTypes from 'prop-types';
@@ -9,11 +10,68 @@ const STATUS_CONFIG = {
   'DONE': { label: 'Completed', dot: 'bg-emerald-500' }
 };
 
-const BoardColumn = ({ status, tickets }) => {
+const BoardColumn = ({ status, tickets, onOpenCreateModal, isDragging }) => {
   const config = STATUS_CONFIG[status] || { label: status, dot: 'bg-slate-400' };
+  const columnRef = useRef(null);
+  const scrollRef = useRef(null);
+
+  // Smooth 60fps auto-scroll during drag-and-drop
+  useEffect(() => {
+    if (!isDragging) return;
+
+    let animFrameId = null;
+    let scrollSpeed = 0; // negative for up, positive for down
+
+    const step = () => {
+      if (scrollSpeed !== 0 && scrollRef.current) {
+        scrollRef.current.scrollTop += scrollSpeed;
+      }
+      animFrameId = requestAnimationFrame(step);
+    };
+
+    const handlePointerMove = (e) => {
+      if (!columnRef.current || !scrollRef.current) return;
+      const colRect = columnRef.current.getBoundingClientRect();
+
+      // Check horizontal bounds (with 30px leeway)
+      if (e.clientX < colRect.left - 30 || e.clientX > colRect.right + 30) {
+        scrollSpeed = 0;
+        return;
+      }
+
+      const scrollRect = scrollRef.current.getBoundingClientRect();
+      const threshold = 120; // active top/bottom scroll zone in px
+
+      // Top scroll zone (from above column header down to threshold into cards)
+      if (e.clientY >= colRect.top - 40 && e.clientY <= scrollRect.top + threshold) {
+        const distance = Math.max(0, (scrollRect.top + threshold) - e.clientY);
+        const intensity = Math.min(1, distance / (threshold + 40));
+        scrollSpeed = -Math.round(4 + intensity * 22); // -4px to -26px per frame
+      }
+      // Bottom scroll zone (from bottom threshold down to below column)
+      else if (e.clientY >= scrollRect.bottom - threshold && e.clientY <= colRect.bottom + 40) {
+        const distance = Math.max(0, e.clientY - (scrollRect.bottom - threshold));
+        const intensity = Math.min(1, distance / (threshold + 40));
+        scrollSpeed = Math.round(4 + intensity * 22); // 4px to 26px per frame
+      } else {
+        scrollSpeed = 0;
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    animFrameId = requestAnimationFrame(step);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+    };
+  }, [isDragging]);
 
   return (
-    <div className="flex flex-col w-[280px] sm:w-[320px] md:w-[340px] shrink-0 snap-center bg-slate-50/50 rounded-2xl border border-slate-200/60 overflow-hidden shadow-sm max-h-full">
+    <div 
+      ref={columnRef}
+      className="flex flex-col w-[280px] sm:w-[320px] md:w-[340px] shrink-0 snap-center bg-slate-50/50 rounded-2xl border border-slate-200/60 overflow-hidden shadow-sm max-h-full"
+    >
       
       {/* Column Header */}
       <div className="p-4 border-b border-slate-200/50 bg-white/50 backdrop-blur-md flex justify-between items-center z-10 shrink-0">
@@ -28,7 +86,7 @@ const BoardColumn = ({ status, tickets }) => {
         </div>
         
         {status === 'TODO' && (
-          <button className="text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 p-1 rounded-md transition-colors">
+          <button onClick={onOpenCreateModal} className="text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 p-1 rounded-md transition-colors">
             <Plus size={16} />
           </button>
         )}
@@ -38,7 +96,10 @@ const BoardColumn = ({ status, tickets }) => {
       <Droppable droppableId={status}>
         {(provided, snapshot) => (
           <div
-            ref={provided.innerRef}
+            ref={(el) => {
+              provided.innerRef(el);
+              scrollRef.current = el;
+            }}
             {...provided.droppableProps}
             className={`flex-1 p-3 transition-colors duration-300 flex flex-col gap-3 overflow-y-auto custom-scrollbar ${
               snapshot.isDraggingOver ? 'bg-blue-50/30' : ''
@@ -73,13 +134,6 @@ const BoardColumn = ({ status, tickets }) => {
                 </p>
               </div>
             )}
-
-            {/* Empty State / Add bottom button */}
-            {status === 'TODO' && (
-              <button className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-slate-300 text-slate-400 hover:text-slate-600 hover:border-slate-400 hover:bg-slate-100/50 transition-all text-sm font-medium mt-auto">
-                <Plus size={16} /> Add Task
-              </button>
-            )}
           </div>
         )}
       </Droppable>
@@ -89,7 +143,9 @@ const BoardColumn = ({ status, tickets }) => {
 
 BoardColumn.propTypes = {
   status: PropTypes.string.isRequired,
-  tickets: PropTypes.array.isRequired
+  tickets: PropTypes.array.isRequired,
+  onOpenCreateModal: PropTypes.func,
+  isDragging: PropTypes.bool
 };
 
 export default BoardColumn;
