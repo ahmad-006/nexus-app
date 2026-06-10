@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const STATUS_CONFIG = {
   TODO: { label: 'To Do', icon: CircleDashed, color: 'text-slate-500', bg: 'bg-slate-100' },
-  IN_PROGRESS: { label: 'In Progress', icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
+  IN_PROGRESS: { label: 'In Progress', icon: Clock, color: 'text-slate-800', bg: 'bg-slate-200' },
   DONE: { label: 'Done', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' }
 };
 
@@ -113,11 +113,11 @@ const TicketSidebar = ({ ticket, onUpdate }) => {
   const reporter = reporterMember?.userId;
 
   return (
-    <aside className="sticky top-6 flex flex-col gap-6">
+    <aside className="sticky top-6 flex flex-col gap-6 md:border-l md:border-slate-200 md:pl-6">
       
       {/* Properties Ledger */}
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+      <div className="flex flex-col gap-2">
+        <div className="px-4 py-2">
           <h3 className="font-semibold text-slate-900 text-sm">Properties</h3>
         </div>
         
@@ -156,11 +156,11 @@ const TicketSidebar = ({ ticket, onUpdate }) => {
             <div className="w-2/3 flex items-center gap-2.5">
               {assignee ? (
                 <>
-                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden border border-slate-200/60 shadow-sm">
+                  <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden border border-slate-200/60 shadow-sm">
                     {assignee.image ? (
                       <img src={assignee.image} alt={assignee.name} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-[9px] font-bold text-blue-700">{getInitials(assignee.name)}</span>
+                      <span className="text-[9px] font-bold text-slate-800">{getInitials(assignee.name)}</span>
                     )}
                   </div>
                   <span className="font-medium text-slate-700">{assignee.name}</span>

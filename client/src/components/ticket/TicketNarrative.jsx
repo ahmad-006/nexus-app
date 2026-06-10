@@ -1,14 +1,78 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
-import { Paperclip, Download, X, Expand, ChevronLeft, ChevronRight } from 'lucide-react';
+import useAuthStore from '../../store/authStore';
+import useTeamStore from '../../store/teamStore';
+import { Pencil, Paperclip, Download, X, Expand, ChevronLeft, ChevronRight, UploadCloud, Loader2, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import api from '../../api/axios';
+import { toast } from 'sonner';
 
 const isImage = (filename) => filename && filename.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
 
 const TicketNarrative = ({ ticket, onUpdate }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(ticket.title);
+  const { user } = useAuthStore();
+  const { activeTeam } = useTeamStore();
+  const [descriptionText, setDescriptionText] = useState(ticket.description || '');
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const currentMember = activeTeam?.members?.find(m => 
+    (m.userId?._id === user?._id) || (m.userId === user?._id)
+  );
+  const isReporter = ticket?.reporterId === user?._id;
+  const canEdit = isReporter || (currentMember && ['admin', 'owner'].includes(currentMember.role));
+
+  const handleDescriptionSubmit = () => {
+    setIsEditingDescription(false);
+    if (descriptionText.trim() !== (ticket.description || '')) {
+      onUpdate({ description: descriptionText.trim() });
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (files.length > 5) {
+      toast.error('You can upload a maximum of 5 images at a time');
+      return;
+    }
+
+    const oversized = files.find(f => f.size > 5 * 1024 * 1024);
+    if (oversized) {
+      toast.error(`"${oversized.name}" exceeds the 5MB size limit`);
+      return;
+    }
+
+    const nonImage = files.find(f => !f.type.startsWith('image/'));
+    if (nonImage) {
+      toast.error(`"${nonImage.name}" is not an image. Please upload only images.`);
+      return;
+    }
+
+    const formData = new FormData();
+    files.forEach(f => formData.append('files', f));
+
+    setIsUploading(true);
+    try {
+      const res = await api.post(`/tickets/${ticket._id}/attachments`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const updatedAttachments = res.data?.data?.attachments || [];
+      onUpdate({ attachments: updatedAttachments });
+      toast.success('Attachments uploaded successfully');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload attachments');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   
   // Gallery State
   const [lightboxIndex, setLightboxIndex] = useState(null);
@@ -70,11 +134,7 @@ const TicketNarrative = ({ ticket, onUpdate }) => {
       
       {/* Header / Title */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-          <span className="hover:text-slate-900 cursor-pointer transition-colors">Workspace</span>
-          <span>/</span>
-          <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600">{ticketIdStr}</span>
-        </div>
+
 
         {isEditingTitle ? (
           <input
@@ -88,7 +148,7 @@ const TicketNarrative = ({ ticket, onUpdate }) => {
           />
         ) : (
           <h1 
-            onClick={() => setIsEditingTitle(true)}
+            onClick={() => canEdit && setIsEditingTitle(true)}
             className="text-3xl font-bold text-slate-900 leading-tight cursor-pointer hover:bg-slate-100 px-3 py-1 -ml-3 rounded-lg transition-colors border border-transparent"
           >
             {ticket.title}
@@ -98,27 +158,105 @@ const TicketNarrative = ({ ticket, onUpdate }) => {
 
       {/* Description */}
       <div className="flex flex-col gap-3">
-        <h3 className="text-lg font-semibold text-slate-900">Description</h3>
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6">
-          <div 
-            className="prose prose-slate max-w-none text-slate-700 leading-relaxed text-[15px]"
-            dangerouslySetInnerHTML={{ __html: safeDescription }}
-          />
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-900">Description</h3>
+          {canEdit && !isEditingDescription && (
+            <button 
+              onClick={() => setIsEditingDescription(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 px-2.5 py-1 rounded-md hover:bg-slate-100 transition-colors"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Edit
+            </button>
+          )}
         </div>
+        
+        {isEditingDescription ? (
+          <div className="flex flex-col gap-3">
+            <textarea
+              autoFocus
+              rows={6}
+              value={descriptionText}
+              onChange={(e) => setDescriptionText(e.target.value)}
+              className="w-full bg-white rounded-2xl border border-blue-400 p-4 outline-none ring-2 ring-blue-100 text-[15px] text-slate-700 resize-y min-h-[150px]"
+              placeholder="Add details to this ticket..."
+            />
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleDescriptionSubmit}
+                className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                Save
+              </button>
+              <button 
+                onClick={() => {
+                  setDescriptionText(ticket.description || '');
+                  setIsEditingDescription(false);
+                }}
+                className="px-4 py-2 text-slate-600 text-sm font-medium hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6">
+            <div 
+              className="prose prose-slate max-w-none text-slate-700 leading-relaxed text-[15px]"
+              dangerouslySetInnerHTML={{ __html: safeDescription }}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Attachments Grid */}
-      {ticket.attachments && ticket.attachments.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <h3 className="text-lg font-semibold text-slate-900">Attachments</h3>
+      {/* Attachments Section */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <h3 className="text-lg font-semibold text-slate-900">Attachments</h3>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60">
+              {ticket.attachments?.length || 0}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
+                <span>Uploading...</span>
+              </>
+            ) : (
+              <>
+                <Plus className="w-3.5 h-3.5 text-slate-500" />
+                <span>Add Images</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Hidden File Input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          multiple
+          accept="image/*"
+          className="hidden"
+        />
+
+        {/* Attachments Grid / Empty State */}
+        {ticket.attachments && ticket.attachments.length > 0 ? (
           <div className="flex flex-row flex-wrap gap-4">
             {ticket.attachments.map((file, idx) => {
               const fileIsImage = isImage(file.name);
               
               if (fileIsImage) {
-                // Find the index of THIS specific image within the filtered imageAttachments array
                 const galleryIndex = imageAttachments.findIndex(img => img.url === file.url);
-                
                 return (
                   <div
                     key={idx}
@@ -127,7 +265,7 @@ const TicketNarrative = ({ ticket, onUpdate }) => {
                   >
                     <img src={file.url} alt={file.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <div className="bg-white p-2 rounded-full shadow-sm text-slate-700 hover:text-blue-600 transition-colors">
+                      <div className="bg-white p-2 rounded-full shadow-sm text-slate-700 hover:text-slate-900 transition-colors">
                         <Expand className="w-4 h-4" />
                       </div>
                     </div>
@@ -135,16 +273,15 @@ const TicketNarrative = ({ ticket, onUpdate }) => {
                 );
               }
 
-              // DOCUMENT RENDER (Pill)
               return (
                 <a
                   key={idx}
                   href={file.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="group flex items-center gap-3 p-3 pr-4 bg-white rounded-xl border border-slate-200/60 shadow-sm hover:border-blue-400 hover:shadow-md transition-all cursor-pointer h-16 max-w-[240px]"
+                  className="group flex items-center gap-3 p-3 pr-4 bg-white rounded-xl border border-slate-200/60 shadow-sm hover:border-slate-400 hover:shadow-md transition-all cursor-pointer h-16 max-w-[240px]"
                 >
-                  <div className="w-10 h-10 shrink-0 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <div className="w-10 h-10 shrink-0 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Paperclip className="w-5 h-5" />
                   </div>
                   <span className="text-sm font-medium text-slate-700 line-clamp-2" title={file.name}>
@@ -153,9 +290,33 @@ const TicketNarrative = ({ ticket, onUpdate }) => {
                 </a>
               );
             })}
+
+            {/* Add More Slot */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="w-32 h-32 rounded-xl border-2 border-dashed border-slate-200 hover:border-slate-400 hover:bg-slate-50/50 flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="text-xs font-medium">Add Image</span>
+            </button>
           </div>
-        </div>
-      )}
+        ) : (
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="group p-6 border-2 border-dashed border-slate-200 hover:border-slate-400 bg-white/50 hover:bg-white rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all text-center"
+          >
+            <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-slate-200/70 flex items-center justify-center text-slate-400 group-hover:text-slate-600 transition-colors">
+              <UploadCloud className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-700">Click to upload attachments</p>
+              <p className="text-xs text-slate-400 mt-0.5">Supports PNG, JPG, WEBP, GIF up to 5MB (Max 5 files)</p>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Hardware Accelerated Gallery Lightbox */}
       {createPortal(
