@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../api/axios';
 import { toast } from 'sonner';
+import useAuthStore from '../store/authStore';
 import { ticketKeys } from '../api/queryKeys';
 export { ticketKeys };
 
@@ -27,6 +28,11 @@ export const fetchTicketDetail = async (ticketId, signal) => {
 export const fetchTicketComments = async (ticketId, signal) => {
   const response = await axiosInstance.get(`/tickets/${ticketId}/comments`, { signal });
   return response.data.data.comments || [];
+};
+
+export const fetchMyTickets = async (signal) => {
+  const response = await axiosInstance.get('/users/me/tickets', { signal });
+  return response.data.data.tickets || [];
 };
 
 /**
@@ -79,6 +85,69 @@ export const useTicketComments = (ticketId) => {
     enabled: !!ticketId,
   });
 };
+
+/**
+ * Fetch all tickets related to the currently authenticated user (assigned or reported) across all teams.
+ * Memoizes client-side filtering and groups tickets cleanly by team using TanStack Query's `select`.
+ */
+export const useMyUserTickets = () => {
+  const { user } = useAuthStore();
+
+  return useQuery({
+    queryKey: ticketKeys.myTickets(),
+    queryFn: ({ signal }) => fetchMyTickets(signal),
+    enabled: !!user?._id,
+    select: (tickets = []) => {
+      const currentUserId = user?._id;
+
+      // Grouping helper function
+      const groupByTeam = (ticketList) => {
+        const groupedMap = new Map();
+        ticketList.forEach((ticket) => {
+          const teamObj = ticket.teamId;
+          const teamId = teamObj?._id || 'unknown';
+          const teamName = teamObj?.name || 'General Workspace';
+
+          if (!groupedMap.has(teamId)) {
+            groupedMap.set(teamId, {
+              teamId,
+              teamName,
+              tickets: [],
+            });
+          }
+          groupedMap.get(teamId).tickets.push(ticket);
+        });
+        return Array.from(groupedMap.values());
+      };
+
+      // 1. Assigned to me
+      const assignedTickets = tickets.filter((t) => {
+        const assigneeId = typeof t.assigneeId === 'object' ? t.assigneeId?._id : t.assigneeId;
+        return assigneeId === currentUserId;
+      });
+
+      // 2. Reported / created by me
+      const reportedTickets = tickets.filter((t) => {
+        const reporterId = typeof t.reporterId === 'object' ? t.reporterId?._id : t.reporterId;
+        return reporterId === currentUserId;
+      });
+
+      return {
+        allTickets: tickets,
+        assignedTickets,
+        reportedTickets,
+        assignedTeamsGrouped: groupByTeam(assignedTickets),
+        reportedTeamsGrouped: groupByTeam(reportedTickets),
+        assignedCount: assignedTickets.length,
+        reportedCount: reportedTickets.length,
+        totalCount: tickets.length,
+      };
+    },
+  });
+};
+
+// Backwards-compatible alias so existing callers don't break
+export const useMyAssignedTickets = useMyUserTickets;
 
 /**
  * ============================================================================
