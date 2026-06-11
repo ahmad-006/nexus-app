@@ -16,6 +16,7 @@ const CommandPill = () => {
   
   const pathMap = {
     '/dashboard': 'Workspace',
+    '/my-tasks': 'My Tasks',
     '/team': 'Team Management',
     '/analytics': 'Analytics',
     '/settings': 'Settings'

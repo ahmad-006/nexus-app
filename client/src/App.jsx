@@ -8,6 +8,7 @@ import Signup from './pages/Signup';
 import VerifyOtp from './pages/VerifyOtp';
 import Workspace from './components/kanban/Workspace';
 import TicketDetail from './pages/TicketDetail';
+import MyTasks from './pages/MyTasks';
 import useAuthStore from './store/authStore';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
@@ -73,6 +74,7 @@ function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<Workspace />} />
             <Route path="/dashboard/ticket/:id" element={<TicketDetail />} />
+            <Route path="/my-tasks" element={<MyTasks />} />
             <Route path="/team" element={
               <div className="h-full w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white/50 flex items-center justify-center">
                 <p className="text-slate-400 font-medium tracking-wide">Team Management Canvas</p>

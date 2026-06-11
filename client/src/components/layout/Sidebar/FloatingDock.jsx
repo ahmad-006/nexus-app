@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Hexagon, LayoutDashboard, Users, BarChart3, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Users, BarChart3, Settings, LogOut } from 'lucide-react';
 import nexusLogo from '../../../assets/nexus_logo.png';
 import nexusIcon from '../../../assets/nexus_icon.png';
 import useAuthStore from '../../../store/authStore';
@@ -8,6 +8,7 @@ import ConfirmationModal from '../../ui/ConfirmationModal';
 
 const NAV_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Workspace' },
+  { to: '/my-tasks', icon: CheckSquare, label: 'My Tasks' },
   { to: '/team', icon: Users, label: 'Team' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/settings', icon: Settings, label: 'Settings' }
