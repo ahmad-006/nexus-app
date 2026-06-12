@@ -52,7 +52,7 @@ teamsRouter
   .post(
     isMember,
     restrictTo("admin"),
-    [teamValidation.userId, teamValidation.teamId],
+    [teamValidation.teamId, teamValidation.memberIdentifier],
     validate,
     postAddMember,
   );

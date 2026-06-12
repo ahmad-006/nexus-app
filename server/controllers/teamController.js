@@ -60,31 +60,24 @@ export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
   const team = await Team.findById(teamId);
   if (!team) return next(new AppError('Team Not Found', 404));
 
-  // Check if user is actually in the team before promoting
-  const isMember = team.members.some(
-    (member) => member.userId.toString() === userId.toString(),
-  );
-  if (!isMember) return next(new AppError('User is not of this team', 400));
-
-  const isAlreadyAdmin = team.members.some(
+  // Find target member by user ID or subdocument _id
+  const targetMember = team.members.find(
     (member) =>
-      member.userId.toString() === userId.toString() && member.role === 'admin',
+      member.userId?.toString() === userId.toString() ||
+      member._id?.toString() === userId.toString()
   );
-  if (isAlreadyAdmin) return next(new AppError('User is already admin', 400));
+  if (!targetMember) return next(new AppError('User is not of this team', 400));
 
-  // Add user to admin list in the Team model
-  const updatedMembers = team.members.map((member) => {
-    if (member.userId.toString() === userId.toString()) {
-      return { ...member, role: 'admin' };
-    }
-    return member;
-  });
+  if (targetMember.role === 'admin') {
+    return next(new AppError('User is already admin', 400));
+  }
 
-  const updatedTeam = await Team.findByIdAndUpdate(
-    teamId,
-    { members: updatedMembers },
-    { new: true },
-  );
+  // Mutate role directly on the Mongoose subdocument and persist
+  targetMember.role = 'admin';
+  await team.save();
+
+  // Populate member user details so the returned team is fully hydrated
+  await team.populate('members.userId', 'name email image');
 
   logActivity({
     userId: req.user.id,
@@ -92,13 +85,13 @@ export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
     resourceType: 'Team',
     resourceId: teamId,
     teamId,
-    details: { promotedUserId: userId },
+    details: { promotedUserId: targetMember.userId },
   });
 
   return res.status(200).json({
     status: 'success',
     data: {
-      updatedTeam,
+      updatedTeam: team,
     },
   });
 });
@@ -110,60 +103,68 @@ export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
  */
 export const postAddMember = catchAsync(async (req, res, next) => {
   const { teamId } = req.params;
-  const { userId } = req.body;
+  const { userId, email } = req.body;
 
-  if (!userId || !teamId)
-    return next(new AppError('User and team ID is required', 400));
+  if (!teamId || (!userId && !email))
+    return next(new AppError('User identifier (email or userId) and team ID are required', 400));
 
-  const user = await User.findById(userId);
-  if (!user) return next(new AppError('User not found', 404));
+  let user;
+  if (email) {
+    user = await User.findOne({ email: email.toLowerCase().trim() });
+  } else if (userId) {
+    user = await User.findById(userId);
+  }
+
+  if (!user) return next(new AppError('No operative found with this email address', 404));
+
+  const resolvedUserId = user._id;
 
   const team = await Team.findById(teamId);
   if (!team) return next(new AppError('Team not found', 404));
 
   const isAlreadyMember = team.members.some(
-    (member) => member.userId.toString() === userId.toString(),
+    (member) => member.userId.toString() === resolvedUserId.toString(),
   );
   if (isAlreadyMember)
     return next(new AppError('User is already a member of this team', 400));
 
   const isInvitePending = await TeamInvite.findOne({
     teamId,
-    inviteeId: userId,
+    inviteeId: resolvedUserId,
     status: 'PENDING',
     expiresAt: { $gt: Date.now() }, // Only block if the invite hasn't expired yet
   });
   if (isInvitePending) {
-    return next(new AppError('User has a pending invitation', 400));
+    return next(new AppError('User already has a pending invitation', 400));
   }
 
   //creating Invite if not exists
   const invite = await TeamInvite.create({
     teamId,
     inviterId: req.user.id,
-    inviteeId: userId,
+    inviteeId: resolvedUserId,
     status: 'PENDING',
   });
 
   // Sending persistent notification
   await createNotification({
-    recipientId: userId,
+    recipientId: resolvedUserId,
     senderId: req.user.id,
     type: 'TEAM_INVITE',
     message: `You were invited to join ${team.name}`,
     resourceId: team._id,
   });
 
-  //SIgning a jwt token for invitation
+  // Signing a jwt token for invitation
   const token = jwt.sign(
-    { teamId, userId, inviterId: req.user.id },
+    { teamId, userId: resolvedUserId, inviterId: req.user.id },
     process.env.JWT_SECRET,
     {
       expiresIn: '7d',
     },
   );
 
-  //SEND INVITATION EMAIL TO USER
+  // SEND INVITATION EMAIL TO USER
   await sendEmail({
     name: user.name.split(' ')[0],
     email: user.email,
@@ -174,7 +175,7 @@ export const postAddMember = catchAsync(async (req, res, next) => {
 
   return res.status(200).json({
     status: 'success',
-    message: 'Invitation email sent',
+    message: `Invitation email sent to ${user.email}`,
   });
 });
 
@@ -277,24 +278,27 @@ export const deleteMember = catchAsync(async (req, res, next) => {
   const team = await Team.findById(teamId);
   if (!team) return next(new AppError("Team not found", 404));
 
-  // Check if the user is a member of the team
-  const isMember = team.members.some(
-    (member) => member.userId.toString() === userId.toString(),
+  // Find member index by userId or subdocument _id
+  const memberIndex = team.members.findIndex(
+    (member) =>
+      member.userId?.toString() === userId.toString() ||
+      member._id?.toString() === userId.toString()
   );
-  if (!isMember)
+  if (memberIndex === -1)
     return next(new AppError("User is not a member of this team", 400));
 
-  const updatedMember = team.members.filter(
-    (member) => member.userId.toString() !== userId.toString(),
-  );
+  const targetUserId = team.members[memberIndex].userId;
 
-  const updatedTeam = await Team.findByIdAndUpdate(
-    teamId,
-    { members: updatedMember },
-    { new: true },
-  );
+  // Prevent removing workspace owner
+  if (team.ownerId?.toString() === targetUserId.toString()) {
+    return next(new AppError("Cannot remove the workspace owner", 400));
+  }
 
-  const removedUser = await User.findById(userId);
+  team.members.splice(memberIndex, 1);
+  await team.save();
+  await team.populate("members.userId", "name email image");
+
+  const removedUser = await User.findById(targetUserId);
   if (removedUser) {
     await sendEmail({
       name: removedUser.name.split(" ")[0],
@@ -304,7 +308,7 @@ export const deleteMember = catchAsync(async (req, res, next) => {
     });
   }
 
-  //LOGGING ACTIVITY
+  // LOGGING ACTIVITY
   logActivity({
     userId: req.user.id,
     action: "MEMBER_REMOVED",
@@ -312,14 +316,14 @@ export const deleteMember = catchAsync(async (req, res, next) => {
     resourceId: teamId,
     teamId,
     details: {
-      removedUserId: userId,
+      removedUserId: targetUserId,
     },
   });
 
   return res.status(200).json({
     status: "success",
     data: {
-      updatedTeam,
+      updatedTeam: team,
     },
   });
 });
