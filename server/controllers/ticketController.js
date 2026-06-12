@@ -72,7 +72,7 @@ const getTicket = catchAsync(async (req, res, next) => {
  * @access  Private (Member or Admin)
  */
 const postTicket = catchAsync(async (req, res, next) => {
-  const { title, description, priority, dueDate } = req.body;
+  const { title, description, priority, dueDate, assigneeId } = req.body;
   const { teamId } = req.params;
   const { id: userId } = req.user;
 
@@ -88,14 +88,41 @@ const postTicket = catchAsync(async (req, res, next) => {
     description,
     priority: priority.toUpperCase(),
     teamId: teamId,
-    assigneeId: null,
+    assigneeId: assigneeId || null,
     reporterId: userId,
     dueDate,
     position,
   });
   const savedTicket = await ticket.save();
 
-  //LOGGING ACTIVITY IN THE ACTIVITY LOG
+  // Populate assignee and reporter details for instant UI consumption
+  await savedTicket.populate('assigneeId', 'name email image');
+  await savedTicket.populate('reporterId', 'name email image');
+
+  // If assigned upon creation, send persistent notification and email
+  if (assigneeId) {
+    await createNotification({
+      recipientId: assigneeId,
+      senderId: userId,
+      type: 'TICKET_ASSIGNED',
+      message: `You were assigned to ticket: ${title}`,
+      resourceId: savedTicket._id,
+    });
+
+    const assignee = await User.findById(assigneeId);
+    if (assignee) {
+      sendEmail({
+        name: assignee.name.split(" ")[0],
+        email: assignee.email,
+        type: "assignment",
+        ticketTitle: savedTicket.title,
+        priority: savedTicket.priority,
+        adminName: req.user.name,
+      }).catch((err) => console.error("Assignment Email Failed:", err.message));
+    }
+  }
+
+  // LOGGING ACTIVITY IN THE ACTIVITY LOG
   logActivity({
     userId,
     action: "TICKET_CREATED",
@@ -107,6 +134,7 @@ const postTicket = catchAsync(async (req, res, next) => {
       description,
       priority,
       dueDate,
+      assigneeId: assigneeId || null,
     },
   });
 
@@ -279,6 +307,24 @@ const patchTicketStatus = catchAsync(async (req, res, next) => {
     }).catch((err) =>
       console.error("Status Update Email Failed:", err.message),
     );
+  }
+
+  // SEND PERSISTENT IN-APP NOTIFICATION
+  const targetRecipientId =
+    oldTicket.assigneeId && oldTicket.assigneeId.toString() !== req.user.id.toString()
+      ? oldTicket.assigneeId
+      : oldTicket.reporterId && oldTicket.reporterId.toString() !== req.user.id.toString()
+      ? oldTicket.reporterId
+      : null;
+
+  if (targetRecipientId) {
+    await createNotification({
+      recipientId: targetRecipientId,
+      senderId: req.user.id,
+      type: 'TICKET_STATUS_CHANGED',
+      message: `Ticket "${oldTicket.title}" status moved to ${newStatus.replace('_', ' ')}`,
+      resourceId: updateTicket._id,
+    });
   }
 
   // --- REAL-TIME EMISSION ---

@@ -1,21 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const CreateTicketModal = ({ isOpen, onClose, onSubmit, isSubmitting }) => {
+const CreateTicketModal = ({ isOpen, onClose, onSubmit, isSubmitting, members = [] }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 'MEDIUM',
-    dueDate: ''
+    dueDate: '',
+    assigneeId: '',
+    files: []
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        title: '',
+        description: '',
+        priority: 'MEDIUM',
+        dueDate: '',
+        assigneeId: '',
+        files: []
+      });
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      assigneeId: formData.assigneeId || null,
+    });
   };
 
   return createPortal(
@@ -88,6 +106,28 @@ const CreateTicketModal = ({ isOpen, onClose, onSubmit, isSubmitting }) => {
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all text-[15px]"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Assignee (Optional)</label>
+              <select
+                value={formData.assigneeId}
+                onChange={(e) => setFormData({ ...formData, assigneeId: e.target.value })}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all text-[15px] text-slate-800"
+              >
+                <option value="">Unassigned</option>
+                {members.map((member) => {
+                  const u = member.userId;
+                  const memberId = (u?._id || member.userId)?.toString();
+                  const memberName = u?.name || 'Operative';
+                  const memberEmail = u?.email ? ` (${u.email})` : '';
+                  return (
+                    <option key={memberId} value={memberId}>
+                      {memberName}{memberEmail}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
 
             <div>

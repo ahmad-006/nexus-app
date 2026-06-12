@@ -42,15 +42,17 @@ const TicketCard = ({ ticket, index }) => {
     });
   };
 
+  const assigneeIdStr = (ticket.assigneeId?._id || ticket.assigneeId)?.toString();
   const assigneeMember = activeTeam?.members?.find(
-    (m) => m.userId?._id === ticket.assigneeId || m.userId?.id === ticket.assigneeId
+    (m) => (m.userId?._id || m.userId)?.toString() === assigneeIdStr
   );
-  const assignee = assigneeMember?.userId;
+  const assignee = assigneeMember?.userId || (ticket.assigneeId && typeof ticket.assigneeId === 'object' ? ticket.assigneeId : null);
 
+  const reporterIdStr = (ticket.reporterId?._id || ticket.reporterId)?.toString();
   const reporterMember = activeTeam?.members?.find(
-    (m) => m.userId?._id === ticket.reporterId || m.userId?.id === ticket.reporterId
+    (m) => (m.userId?._id || m.userId)?.toString() === reporterIdStr
   );
-  const reporter = reporterMember?.userId;
+  const reporter = reporterMember?.userId || (ticket.reporterId && typeof ticket.reporterId === 'object' ? ticket.reporterId : null);
 
   const attachmentCount = ticket.attachments?.length || 0;
   const commentCount = ticket.commentCount || 0;

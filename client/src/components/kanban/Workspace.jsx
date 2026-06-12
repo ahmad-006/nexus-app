@@ -7,12 +7,15 @@ import KanbanSkeleton from './KanbanSkeleton';
 import CreateTicketModal from './CreateTicketModal';
 import { Plus } from 'lucide-react';
 import { useTeamTickets, useReorderTicket, useCreateTicket } from '../../hooks/useTickets';
+import { useTeamDetails } from '../../hooks/useTeams';
 
 const STATUSES = ['TODO', 'IN_PROGRESS', 'DONE'];
 
 const Workspace = () => {
   const { activeTeamId, isLoading: isTeamLoading } = useTeamStore();
   const { data: tickets = [], isLoading: isTicketsLoading } = useTeamTickets(activeTeamId);
+  const { data: teamDetails } = useTeamDetails(activeTeamId);
+  const teamMembers = teamDetails?.members || [];
   const reorderTicketMutation = useReorderTicket(activeTeamId);
   const createTicketMutation = useCreateTicket(activeTeamId);
 
@@ -151,6 +154,7 @@ const Workspace = () => {
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateTicket}
         isSubmitting={createTicketMutation.isPending}
+        members={teamMembers}
       />
     </div>
   );
