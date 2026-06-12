@@ -446,3 +446,68 @@ export const useDeleteComment = (ticketId, teamId) => {
     },
   });
 };
+
+/**
+ * Mutation to edit/update an existing comment or reply.
+ * Optimistically updates ticketKeys.comments(ticketId) and sets isEdited to true.
+ */
+export const useUpdateComment = (ticketId) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ commentId, text }) => {
+      const response = await axiosInstance.patch(`/comments/${commentId}`, { text });
+      return response.data.data.comment;
+    },
+    onMutate: async ({ commentId, text }) => {
+      await queryClient.cancelQueries({ queryKey: ticketKeys.comments(ticketId) });
+      const previousComments = queryClient.getQueryData(ticketKeys.comments(ticketId));
+
+      queryClient.setQueryData(ticketKeys.comments(ticketId), (oldComments = []) => {
+        return oldComments.map((comment) => {
+          if (comment._id === commentId) {
+            return { ...comment, text, isEdited: true };
+          }
+          if (comment.replies && comment.replies.some((r) => r._id === commentId)) {
+            return {
+              ...comment,
+              replies: comment.replies.map((reply) =>
+                reply._id === commentId ? { ...reply, text, isEdited: true } : reply
+              ),
+            };
+          }
+          return comment;
+        });
+      });
+
+      return { previousComments };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousComments) {
+        queryClient.setQueryData(ticketKeys.comments(ticketId), context.previousComments);
+      }
+      toast.error(err.response?.data?.message || 'Failed to update comment');
+    },
+    onSuccess: (updatedComment) => {
+      queryClient.setQueryData(ticketKeys.comments(ticketId), (oldComments = []) => {
+        return oldComments.map((comment) => {
+          if (comment._id === updatedComment._id) {
+            return { ...comment, text: updatedComment.text, isEdited: true };
+          }
+          if (comment.replies && comment.replies.some((r) => r._id === updatedComment._id)) {
+            return {
+              ...comment,
+              replies: comment.replies.map((reply) =>
+                reply._id === updatedComment._id
+                  ? { ...reply, text: updatedComment.text, isEdited: true }
+                  : reply
+              ),
+            };
+          }
+          return comment;
+        });
+      });
+      toast.success('Comment updated');
+    },
+  });
+};

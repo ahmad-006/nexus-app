@@ -5,7 +5,7 @@ import api from '../../api/axios';
 import { socket } from '../../api/socket';
 import useAuthStore from '../../store/authStore';
 import { toast } from 'sonner';
-import { useTicketComments, useAddComment, useDeleteComment } from '../../hooks/useTickets';
+import { useTicketComments, useAddComment, useDeleteComment, useUpdateComment } from '../../hooks/useTickets';
 import { ticketKeys } from '../../api/queryKeys';
 
 const TicketActivity = ({ ticketId, teamId }) => {
@@ -15,6 +15,7 @@ const TicketActivity = ({ ticketId, teamId }) => {
   const { data: comments = [], isLoading } = useTicketComments(ticketId);
   const addCommentMutation = useAddComment(ticketId, teamId);
   const deleteCommentMutation = useDeleteComment(ticketId, teamId);
+  const updateCommentMutation = useUpdateComment(ticketId);
 
   const [newComment, setNewComment] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -24,6 +25,11 @@ const TicketActivity = ({ ticketId, teamId }) => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
   const replyInputRef = useRef(null);
+
+  // Edit State
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
+  const editInputRef = useRef(null);
 
   const isSubmitting = addCommentMutation.isPending && !replyingTo;
   const isSubmittingReply = addCommentMutation.isPending && !!replyingTo;
@@ -37,6 +43,15 @@ const TicketActivity = ({ ticketId, teamId }) => {
       replyInputRef.current.focus();
     }
   }, [replyingTo]);
+
+  // Auto-focus edit input when opened and move cursor to the end
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus();
+      const length = editInputRef.current.value.length;
+      editInputRef.current.setSelectionRange(length, length);
+    }
+  }, [editingId]);
 
   useEffect(() => {
     if (!socket.connected) {
@@ -72,15 +87,33 @@ const TicketActivity = ({ ticketId, teamId }) => {
           if (c._id === updatedData._id) {
             return { ...c, text: updatedData.text, isEdited: true };
           }
+          if (c.replies && c.replies.some(r => r._id === updatedData._id)) {
+            return {
+              ...c,
+              replies: c.replies.map(r =>
+                r._id === updatedData._id ? { ...r, text: updatedData.text, isEdited: true } : r
+              ),
+            };
+          }
           return c;
         })
       );
     };
 
     const handleDeleteComment = (deletedData) => {
-      queryClient.setQueryData(ticketKeys.comments(ticketId), (prev = []) =>
-        prev.filter(c => c._id !== deletedData._id)
-      );
+      queryClient.setQueryData(ticketKeys.comments(ticketId), (prev = []) => {
+        const filtered = prev.filter(c => c._id !== deletedData._id);
+        return filtered.map(c => {
+          if (c.replies && c.replies.some(r => r._id === deletedData._id)) {
+            return {
+              ...c,
+              replies: c.replies.filter(r => r._id !== deletedData._id),
+              replyCount: Math.max(0, (c.replyCount || 1) - 1),
+            };
+          }
+          return c;
+        });
+      });
     };
 
     socket.on('receive_comment', handleReceiveComment);
@@ -130,6 +163,30 @@ const TicketActivity = ({ ticketId, teamId }) => {
   const handleDelete = async (commentId) => {
     try {
       await deleteCommentMutation.mutateAsync(commentId);
+    } catch (err) {
+      // Error handled in mutation
+    }
+  };
+
+  const startEditing = (item) => {
+    setEditingId(item._id);
+    setEditText(item.text);
+    setReplyingTo(null);
+    setReplyText('');
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const handleEditSubmit = async (commentId) => {
+    if (!editText.trim() || updateCommentMutation.isPending) return;
+
+    try {
+      await updateCommentMutation.mutateAsync({ commentId, text: editText.trim() });
+      setEditingId(null);
+      setEditText('');
     } catch (err) {
       // Error handled in mutation
     }
@@ -344,35 +401,89 @@ const TicketActivity = ({ ticketId, teamId }) => {
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="font-semibold text-slate-900 text-[14px] md:text-[15px] truncate">{comment.author?.name || 'Unknown User'}</span>
                     <span className="text-[11px] md:text-xs text-slate-500 shrink-0">{formatTime(comment.createdAt)}</span>
-                    {comment.isEdited && <span className="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">(edited)</span>}
+                    {comment.isEdited && (
+                      <span className="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">
+                        (edited)
+                      </span>
+                    )}
                     
-                    {user?._id === comment.authorId && (
+                    {(user?._id === comment.authorId || user?._id === comment.author?._id) && (
                       <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleDelete(comment._id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete Comment">
+                        <button
+                          onClick={() => startEditing(comment)}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+                          title="Edit Comment"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(comment._id)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                          title="Delete Comment"
+                        >
                           <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         </button>
                       </div>
                     )}
                   </div>
                   
-                  {/* Main Comment Text */}
-                  <div className="text-[14px] md:text-[15px] text-slate-800 whitespace-pre-wrap leading-relaxed">
-                    {comment.text}
-                  </div>
+                  {/* Main Comment Text or Edit Form */}
+                  {editingId === comment._id ? (
+                    <div className="mt-2 flex flex-col gap-2 animate-in fade-in duration-150">
+                      <textarea
+                        ref={editInputRef}
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        className="w-full min-h-[75px] bg-white border border-slate-300 rounded-lg p-3 text-[14px] text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/50 focus:border-slate-900 transition-all resize-none shadow-sm"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleEditSubmit(comment._id);
+                          } else if (e.key === 'Escape') {
+                            cancelEditing();
+                          }
+                        }}
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={cancelEditing}
+                          className="px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleEditSubmit(comment._id)}
+                          disabled={updateCommentMutation.isPending || !editText.trim()}
+                          className="px-3.5 py-1 bg-slate-900 text-white rounded-md font-medium text-xs flex items-center gap-1.5 hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
+                        >
+                          {updateCommentMutation.isPending ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[14px] md:text-[15px] text-slate-800 whitespace-pre-wrap leading-relaxed">
+                      {comment.text}
+                    </div>
+                  )}
 
                   {/* Actions (Reply Button) */}
-                  <div className="mt-2 flex items-center gap-4">
-                    <button 
-                      onClick={() => {
-                        setReplyingTo(isReplying ? null : comment._id);
-                        setReplyText('');
-                      }}
-                      className={`flex items-center gap-1.5 text-xs font-semibold transition-colors ${isReplying ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'}`}
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      Reply
-                    </button>
-                  </div>
+                  {editingId !== comment._id && (
+                    <div className="mt-2 flex items-center gap-4">
+                      <button 
+                        onClick={() => {
+                          setReplyingTo(isReplying ? null : comment._id);
+                          setReplyText('');
+                          if (editingId) cancelEditing();
+                        }}
+                        className={`flex items-center gap-1.5 text-xs font-semibold transition-colors ${isReplying ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'}`}
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        Reply
+                      </button>
+                    </div>
+                  )}
 
                   {/* Nested Replies (Linear Style) */}
                   {hasReplies && (
@@ -392,16 +503,70 @@ const TicketActivity = ({ ticketId, teamId }) => {
                             <div className="flex items-center gap-2 mb-0.5">
                               <span className="font-semibold text-slate-900 text-[13px]">{reply.author?.name || 'Unknown User'}</span>
                               <span className="text-[10px] text-slate-500">{formatTime(reply.createdAt)}</span>
+                              {reply.isEdited && (
+                                <span className="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">
+                                  (edited)
+                                </span>
+                              )}
                               
-                              {user?._id === reply.authorId && (
-                                <button onClick={() => handleDelete(reply._id)} className="ml-auto opacity-0 group-hover/reply:opacity-100 p-1 text-slate-400 hover:text-red-600 rounded transition-opacity">
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
+                              {(user?._id === reply.authorId || user?._id === reply.author?._id) && (
+                                <div className="ml-auto opacity-0 group-hover/reply:opacity-100 flex items-center gap-1 transition-opacity">
+                                  <button
+                                    onClick={() => startEditing(reply)}
+                                    className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
+                                    title="Edit Reply"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(reply._id)}
+                                    className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    title="Delete Reply"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
                               )}
                             </div>
-                            <div className="text-[13.5px] md:text-[14px] text-slate-700 whitespace-pre-wrap leading-relaxed">
-                              {reply.text}
-                            </div>
+                            {editingId === reply._id ? (
+                              <div className="mt-1.5 flex flex-col gap-2 animate-in fade-in duration-150">
+                                <textarea
+                                  ref={editInputRef}
+                                  value={editText}
+                                  onChange={(e) => setEditText(e.target.value)}
+                                  className="w-full min-h-[60px] bg-white border border-slate-300 rounded-lg p-2.5 text-[13.5px] text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/50 focus:border-slate-900 transition-all resize-none shadow-sm"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      handleEditSubmit(reply._id);
+                                    } else if (e.key === 'Escape') {
+                                      cancelEditing();
+                                    }
+                                  }}
+                                />
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={cancelEditing}
+                                    className="px-2.5 py-0.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditSubmit(reply._id)}
+                                    disabled={updateCommentMutation.isPending || !editText.trim()}
+                                    className="px-3 py-0.5 bg-slate-900 text-white rounded font-medium text-xs flex items-center gap-1 hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
+                                  >
+                                    {updateCommentMutation.isPending ? 'Saving...' : 'Save'}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-[13.5px] md:text-[14px] text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                {reply.text}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
