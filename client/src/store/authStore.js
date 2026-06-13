@@ -7,6 +7,12 @@ const useAuthStore = create((set) => ({
   isLoading: false,
   isCheckingAuth: true,
   
+  setUser: (user) => set({ user }),
+  updateUser: (fields) =>
+    set((state) => ({
+      user: state.user ? { ...state.user, ...fields } : null,
+    })),
+
   // Verify session on app load
   checkAuth: async () => {
     set({ isCheckingAuth: true });

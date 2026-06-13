@@ -15,6 +15,16 @@ export const teamKeys = {
   all: ['teams'],
   lists: () => [...teamKeys.all, 'list'],
   detail: (teamId) => [...teamKeys.all, 'detail', teamId],
+  members: (teamId) => [...teamKeys.detail(teamId), 'members'],
+  invites: () => [...teamKeys.all, 'invites'],
+  activities: (teamId) => [...teamKeys.detail(teamId), 'activities'],
+};
+
+export const userKeys = {
+  all: ['users'],
+  list: () => [...userKeys.all, 'list'],
+  profile: () => [...userKeys.all, 'profile'],
+  teams: () => [...userKeys.all, 'teams'],
 };
 
 export const ticketKeys = {
@@ -25,4 +35,9 @@ export const ticketKeys = {
   detail: (ticketId) => [...ticketKeys.details(), ticketId],
   comments: (ticketId) => [...ticketKeys.detail(ticketId), 'comments'],
   myTickets: () => [...ticketKeys.all, 'me'],
+};
+
+export const notificationKeys = {
+  all: ['notifications'],
+  list: () => [...notificationKeys.all, 'list'],
 };
