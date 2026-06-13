@@ -1,12 +1,29 @@
-import { Outlet, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, Navigate, useNavigate } from 'react-router-dom';
 import FloatingDock from './Sidebar/FloatingDock';
 import CommandPill from './Header/CommandPill';
 import useAuthStore from '../../store/authStore';
 import { useMyTeams } from '../../hooks/useTeams';
+import { socket } from '../../api/socket';
+import { useNotificationSocket } from '../../hooks/useNotifications';
 
 const DashboardLayout = () => {
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
   useMyTeams({ enabled: isAuthenticated && !!user?.isVerified });
+
+  // Connect WebSocket when authenticated and clean up on unmount / logout
+  useEffect(() => {
+    if (isAuthenticated) {
+      socket.connect();
+    }
+    return () => {
+      socket.disconnect();
+    };
+  }, [isAuthenticated]);
+
+  // Global socket listener for new_notification events
+  useNotificationSocket(navigate);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
