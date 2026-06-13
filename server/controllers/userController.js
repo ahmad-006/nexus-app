@@ -66,13 +66,21 @@ export const getUserById = catchAsync(async (req, res, next) => {
  * @route   PATCH /api/users/me
  * @access  Private
  */
-export const patchUserProfile = catchAsync(async (req, res) => {
+export const patchUserProfile = catchAsync(async (req, res, next) => {
   const { name, image } = req.body;
   const userId = req.user.id;
 
+  if (name === undefined && image === undefined) {
+    return next(new AppError("Please provide fields to update", 400));
+  }
+
+  const updateData = {};
+  if (name !== undefined) updateData.name = name;
+  if (image !== undefined) updateData.image = image;
+
   const user = await User.findByIdAndUpdate(
     userId,
-    { name, image },
+    updateData,
     { new: true, runValidators: true },
   ).select("-password");
 
@@ -91,11 +99,16 @@ export const deleteUser = catchAsync(async (req, res) => {
     { $pull: { members: { userId: req.user.id } } },
   );
   await Ticket.updateMany(
-    { $or: [{ reporterId: req.user.id }, { assigneeId: req.user.id }] },
+    { assigneeId: req.user.id },
     { $set: { assigneeId: null } },
   );
 
-  return res.status(204).json({ status: "success", data: null });
+  res.cookie("jwt", "loggedout", {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+
+  return res.status(200).json({ status: "success", message: "Account deleted successfully", data: null });
 });
 
 /**
@@ -155,15 +168,15 @@ export const postImage = catchAsync(async (req, res, next) => {
     folder: "/nexus-users",
   });
 
-  await User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     userId,
     {
       image: uploadResponse.url,
     },
     { new: true },
-  );
+  ).select("-password");
 
   return res
     .status(200)
-    .json({ status: "success", data: { imageUrl: uploadResponse.url } });
+    .json({ status: "success", data: { imageUrl: uploadResponse.url, user } });
 });
