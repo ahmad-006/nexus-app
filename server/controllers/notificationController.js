@@ -6,7 +6,7 @@ export const getNotifications = catchAsync(async (req, res, next) => {
   const notifications = await Notification.find({ recipientId: req.user.id })
     .sort({ createdAt: -1 })
     .limit(50)
-    .populate('senderId', 'name avatar');
+    .populate('senderId', 'name image email');
 
   res.status(200).json({
     status: 'success',
@@ -22,7 +22,7 @@ export const markAsRead = catchAsync(async (req, res, next) => {
     { _id: id, recipientId: req.user.id }, // Security check: Ensure it belongs to the logged in user
     { isRead: true },
     { new: true }
-  );
+  ).populate('senderId', 'name image email');
 
   if (!notification) {
     return next(new AppError('Notification not found or unauthorized', 404));
