@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { LogOut, User, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { LogOut, User, Settings, Shield } from 'lucide-react';
 import useAuthStore from '../../../store/authStore';
 import ConfirmationModal from '../../ui/ConfirmationModal';
 
 const UserProfile = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -29,8 +31,12 @@ const UserProfile = () => {
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center gap-2 focus:outline-none rounded-full ring-offset-2 focus:ring-2 focus:ring-slate-500/50 transition-all"
         >
-          <div className="h-9 w-9 rounded-full bg-slate-900 flex items-center justify-center text-white font-serif font-bold text-sm shadow-sm ring-1 ring-slate-900/5 hover:ring-slate-900/10 transition-all">
-            {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+          <div className="h-9 w-9 rounded-full bg-slate-900 flex items-center justify-center text-white font-serif font-bold text-sm shadow-sm ring-1 ring-slate-900/5 hover:ring-slate-900/10 transition-all overflow-hidden">
+            {user.image ? (
+              <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
+            ) : (
+              user.name ? user.name.charAt(0).toUpperCase() : 'U'
+            )}
           </div>
         </button>
 
@@ -42,13 +48,25 @@ const UserProfile = () => {
             </div>
             
             <div className="py-1">
-              <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+              <button 
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate('/settings?tab=profile');
+                }}
+                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+              >
                 <User size={16} />
                 Profile
               </button>
-              <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors">
-                <Settings size={16} />
-                Account Settings
+              <button 
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate('/settings?tab=security');
+                }}
+                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+              >
+                <Shield size={16} />
+                Security & Access
               </button>
             </div>
             

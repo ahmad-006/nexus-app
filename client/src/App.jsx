@@ -9,6 +9,9 @@ import VerifyOtp from './pages/VerifyOtp';
 import Workspace from './components/kanban/Workspace';
 import TicketDetail from './pages/TicketDetail';
 import MyTasks from './pages/MyTasks';
+import TeamManagement from './pages/TeamManagement';
+import AcceptInvite from './pages/AcceptInvite';
+import Settings from './pages/Settings';
 import useAuthStore from './store/authStore';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
@@ -70,26 +73,22 @@ function App() {
             } 
           />
           
+          {/* Invitation Acceptance Routes */}
+          <Route path="/invitation/accept/:token" element={<AcceptInvite />} />
+          <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+          
           {/* Protected Routes Wrapper */}
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<Workspace />} />
             <Route path="/dashboard/ticket/:id" element={<TicketDetail />} />
             <Route path="/my-tasks" element={<MyTasks />} />
-            <Route path="/team" element={
-              <div className="h-full w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white/50 flex items-center justify-center">
-                <p className="text-slate-400 font-medium tracking-wide">Team Management Canvas</p>
-              </div>
-            } />
+            <Route path="/team" element={<TeamManagement />} />
             <Route path="/analytics" element={
               <div className="h-full w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white/50 flex items-center justify-center">
                 <p className="text-slate-400 font-medium tracking-wide">Analytics Canvas</p>
               </div>
             } />
-            <Route path="/settings" element={
-              <div className="h-full w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white/50 flex items-center justify-center">
-                <p className="text-slate-400 font-medium tracking-wide">Settings Canvas</p>
-              </div>
-            } />
+            <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>
       </div>

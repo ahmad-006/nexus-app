@@ -279,8 +279,8 @@ const TicketActivity = ({ ticketId, teamId }) => {
       <div className="flex gap-3 md:gap-4 mb-8">
         {/* User Avatar */}
         <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-slate-200 overflow-hidden shrink-0 mt-0.5 border border-slate-300/50 shadow-sm">
-          {user?.avatar ? (
-            <img src={user.avatar} alt="You" className="w-full h-full object-cover" />
+          {user?.image || user?.avatar ? (
+            <img src={user.image || user.avatar} alt="You" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
               {user?.name?.charAt(0).toUpperCase() || 'U'}
@@ -587,8 +587,8 @@ const TicketActivity = ({ ticketId, teamId }) => {
                   {isReplying && (
                     <div className="mt-4 flex gap-3 items-start animate-in fade-in slide-in-from-top-2 duration-200">
                       <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-slate-200 overflow-hidden shrink-0 mt-1 shadow-sm">
-                        {user?.avatar ? (
-                          <img src={user.avatar} className="w-full h-full object-cover" />
+                        {user?.image || user?.avatar ? (
+                          <img src={user.image || user.avatar} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-800 font-bold text-[10px]">
                             {user?.name?.charAt(0).toUpperCase()}
