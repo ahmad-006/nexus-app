@@ -12,6 +12,7 @@ import MyTasks from './pages/MyTasks';
 import TeamManagement from './pages/TeamManagement';
 import AcceptInvite from './pages/AcceptInvite';
 import Settings from './pages/Settings';
+import Onboarding from './pages/Onboarding';
 import useAuthStore from './store/authStore';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
@@ -80,6 +81,7 @@ function App() {
           {/* Protected Routes Wrapper */}
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<Workspace />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/dashboard/ticket/:id" element={<TicketDetail />} />
             <Route path="/my-tasks" element={<MyTasks />} />
             <Route path="/team" element={<TeamManagement />} />
