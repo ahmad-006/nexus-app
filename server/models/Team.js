@@ -5,6 +5,37 @@ const teamSchema = new Schema(
     name: {
       type: String,
       required: true,
+      trim: true,
+    },
+    slug: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
+    industry: {
+      type: String,
+      enum: [
+        "Software Engineering",
+        "Product & Design",
+        "DevOps & Infra",
+        "Marketing",
+        "Agency",
+        "Other",
+      ],
+      default: "Software Engineering",
+    },
+    plan: {
+      type: String,
+      enum: ["free", "pro", "enterprise"],
+      default: "free",
+    },
+    memberLimit: {
+      type: Number,
+      default: 5,
     },
     ownerId: {
       type: Types.ObjectId,

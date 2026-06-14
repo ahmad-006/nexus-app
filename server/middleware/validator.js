@@ -114,8 +114,8 @@ export const teamValidation = {
   name: body("name")
     .notEmpty()
     .trim()
-    .isLength({ min: 5 })
-    .withMessage("A name must have minimum of 5 characters"),
+    .isLength({ min: 2, max: 60 })
+    .withMessage("Workspace name must be between 2 and 60 characters"),
   userId: check("userId").notEmpty().isMongoId().withMessage("Invalid User"),
   teamId: check("teamId").notEmpty().isMongoId().withMessage("Invalid Team"),
   memberIdentifier: body().custom((value, { req }) => {
