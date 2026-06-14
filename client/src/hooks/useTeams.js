@@ -141,19 +141,66 @@ export const useCreateTeam = () => {
   const { setActiveTeamId } = useTeamStore();
 
   return useMutation({
-    mutationFn: async ({ name }) => {
-      const response = await axiosInstance.post('/teams', { name });
+    mutationFn: async (payload) => {
+      const response = await axiosInstance.post('/teams', payload);
       return response.data.data.team;
     },
     onSuccess: (newTeam) => {
       queryClient.invalidateQueries({ queryKey: teamKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: teamKeys.all });
       if (newTeam?._id) {
         setActiveTeamId(newTeam._id);
       }
-      toast.success(`Team "${newTeam.name}" created successfully`);
+      toast.success(`Workspace "${newTeam.name}" initialized successfully`);
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Failed to create team');
+      toast.error(err.response?.data?.message || 'Failed to create workspace');
+    },
+  });
+};
+
+/**
+ * Mutation to accept an invitation directly using invite ID (for logged-in users)
+ */
+export const useAcceptInviteById = () => {
+  const queryClient = useQueryClient();
+  const { setActiveTeamId } = useTeamStore();
+
+  return useMutation({
+    mutationFn: async (inviteId) => {
+      const response = await axiosInstance.patch(`/teams/invites/${inviteId}/accept`);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.all });
+      if (data?.data?.team?._id) {
+        setActiveTeamId(data.data.team._id);
+      }
+      toast.success(data.message || 'Workspace joined successfully');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to accept invitation');
+    },
+  });
+};
+
+/**
+ * Mutation to decline an invitation directly using invite ID
+ */
+export const useDeclineInviteById = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (inviteId) => {
+      const response = await axiosInstance.patch(`/teams/invites/${inviteId}/decline`);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.invites() });
+      toast.success(data.message || 'Invitation declined');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to decline invitation');
     },
   });
 };
