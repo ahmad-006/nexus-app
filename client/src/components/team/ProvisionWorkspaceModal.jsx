@@ -119,7 +119,7 @@ export default function ProvisionWorkspaceModal({ isOpen, onClose, onSuccess }) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200 pointer-events-auto">
       <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xl max-w-xl w-full overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
         {/* Modal Header & Progress Indicator */}
         <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
