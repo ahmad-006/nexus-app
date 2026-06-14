@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { Team } from "../models/Team.js";
 import { User } from "../models/User.js";
 import { Ticket } from "../models/Ticket.js";
@@ -12,18 +13,39 @@ import { createNotification } from "../util/notificationService.js";
 import { socketManager } from '../util/socket.js';
 
 /**
- * @desc    Create a new team
+ * @desc    Create a new team workspace (with optional slug, tier, and member invites)
  * @route   POST /api/teams
  * @access  Private (user)
  */
 export const postCreateTeam = catchAsync(async (req, res, next) => {
-  const { name } = req.body;
+  const { name, slug, description, industry, plan, invites } = req.body;
   const { id: ownerId } = req.user;
 
   if (!name) return next(new AppError('Name is required', 400));
 
+  // Generate safe lowercase kebab-case slug
+  let safeSlug = (slug || name)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  if (!safeSlug) safeSlug = `team-${Date.now()}`;
+
+  // Check slug collision
+  const existingTeam = await Team.findOne({ slug: safeSlug });
+  if (existingTeam) {
+    const suffix = crypto.randomBytes(2).toString('hex');
+    safeSlug = `${safeSlug}-${suffix}`;
+  }
+
   const team = new Team({
-    name,
+    name: name.trim(),
+    slug: safeSlug,
+    description: description ? description.trim() : undefined,
+    industry: industry || 'Software Engineering',
+    plan: plan || 'free',
     ownerId,
     members: [{ role: 'admin', userId: ownerId }],
   });
@@ -35,8 +57,58 @@ export const postCreateTeam = catchAsync(async (req, res, next) => {
     resourceType: 'Team',
     resourceId: team._id,
     teamId: team._id,
-    details: { teamName: name },
+    details: { teamName: name, plan: team.plan },
   });
+
+  // Handle optional initial member invites during workspace initialization
+  if (Array.isArray(invites) && invites.length > 0) {
+    for (const email of invites) {
+      if (!email || typeof email !== 'string') continue;
+      const cleanEmail = email.toLowerCase().trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) continue;
+
+      const user = await User.findOne({ email: cleanEmail });
+      if (user && user._id.toString() !== ownerId.toString()) {
+        const isAlreadyPending = await TeamInvite.findOne({
+          teamId: team._id,
+          inviteeId: user._id,
+          status: 'PENDING',
+          expiresAt: { $gt: Date.now() },
+        });
+
+        if (!isAlreadyPending) {
+          await TeamInvite.create({
+            teamId: team._id,
+            inviterId: ownerId,
+            inviteeId: user._id,
+            status: 'PENDING',
+          });
+
+          await createNotification({
+            recipientId: user._id,
+            senderId: ownerId,
+            type: 'TEAM_INVITE',
+            message: `You were invited to join ${team.name}`,
+            resourceId: team._id,
+          });
+
+          const token = jwt.sign(
+            { teamId: team._id, userId: user._id, inviterId: ownerId },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' },
+          );
+
+          await sendEmail({
+            name: user.name.split(' ')[0],
+            email: user.email,
+            token,
+            type: 'teamInvite',
+            adminName: req.user.name,
+          });
+        }
+      }
+    }
+  }
 
   return res.status(200).json({
     status: 'success',
@@ -260,6 +332,86 @@ export const getMyInvites = catchAsync(async (req, res, next) => {
     data: {
       invites,
     },
+  });
+});
+
+/**
+ * @desc    Accept an invitation directly using invite ID (for authenticated operatives)
+ * @route   PATCH /api/teams/invites/:inviteId/accept
+ * @access  Private
+ */
+export const patchAcceptInviteById = catchAsync(async (req, res, next) => {
+  const { inviteId } = req.params;
+  const { id: userId } = req.user;
+
+  const invite = await TeamInvite.findById(inviteId);
+  if (!invite) return next(new AppError('Invitation not found', 404));
+
+  if (invite.inviteeId.toString() !== userId.toString()) {
+    return next(new AppError('You are not authorized to accept this invitation', 403));
+  }
+
+  if (invite.status !== 'PENDING') {
+    return next(new AppError('This invitation has already been processed', 400));
+  }
+
+  if (invite.expiresAt < new Date()) {
+    return next(new AppError('This invitation has expired', 400));
+  }
+
+  const team = await Team.findById(invite.teamId);
+  if (!team) return next(new AppError('Team not found', 404));
+
+  const isAlreadyMember = team.members.some(
+    (member) => member.userId.toString() === userId.toString(),
+  );
+
+  if (!isAlreadyMember) {
+    team.members.push({ userId, role: 'member' });
+    await team.save();
+  }
+
+  invite.status = 'ACCEPTED';
+  await invite.save();
+
+  logActivity({
+    userId,
+    action: 'MEMBER_ADDED',
+    resourceType: 'Team',
+    resourceId: team._id,
+    teamId: team._id,
+    details: { addedMember: userId, role: 'member' },
+  });
+
+  return res.status(200).json({
+    status: 'success',
+    message: `Successfully joined ${team.name}`,
+    data: { team },
+  });
+});
+
+/**
+ * @desc    Decline an invitation directly using invite ID
+ * @route   PATCH /api/teams/invites/:inviteId/decline
+ * @access  Private
+ */
+export const patchDeclineInviteById = catchAsync(async (req, res, next) => {
+  const { inviteId } = req.params;
+  const { id: userId } = req.user;
+
+  const invite = await TeamInvite.findById(inviteId);
+  if (!invite) return next(new AppError('Invitation not found', 404));
+
+  if (invite.inviteeId.toString() !== userId.toString()) {
+    return next(new AppError('You are not authorized to decline this invitation', 403));
+  }
+
+  invite.status = 'REJECTED';
+  await invite.save();
+
+  return res.status(200).json({
+    status: 'success',
+    message: 'Invitation declined successfully',
   });
 });
 

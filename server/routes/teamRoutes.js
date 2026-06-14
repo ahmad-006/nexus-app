@@ -8,6 +8,8 @@ import {
   deleteTeam,
   getTeam,
   getMyInvites,
+  patchAcceptInviteById,
+  patchDeclineInviteById,
 } from "../controllers/teamController.js";
 import { isMember, restrictTo } from "../middleware/role-check.js";
 import { teamValidation } from "../middleware/validator.js";
@@ -21,6 +23,8 @@ teamsRouter.use(protect);
 
 // 2) STATIC ROUTES
 teamsRouter.route("/invites/me").get(getMyInvites);
+teamsRouter.route("/invites/:inviteId/accept").patch(patchAcceptInviteById);
+teamsRouter.route("/invites/:inviteId/decline").patch(patchDeclineInviteById);
 teamsRouter.route("/accept-invite/members/:token").patch(patchAcceptInvite);
 
 // 3) BASE ROUTES
