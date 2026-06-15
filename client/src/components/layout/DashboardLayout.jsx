@@ -6,7 +6,6 @@ import useAuthStore from '../../store/authStore';
 import { useMyTeams } from '../../hooks/useTeams';
 import { socket } from '../../api/socket';
 import { useNotificationSocket } from '../../hooks/useNotifications';
-import Onboarding from '../../pages/Onboarding';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
@@ -37,7 +36,22 @@ const DashboardLayout = () => {
     return <Navigate to="/verify-email" replace />;
   }
 
-  const isOrphanedUser = !isLoadingTeams && teams.length === 0 && location.pathname !== '/settings';
+  // If initial load of teams is in flight and we have 0 cached teams
+  if (isLoadingTeams && teams.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center text-slate-400 font-sans">
+        <div className="w-8 h-8 rounded-full border-2 border-slate-300 border-t-slate-800 animate-spin mb-3" />
+        <span className="text-xs font-medium tracking-wide">Synchronizing workspace telemetry...</span>
+      </div>
+    );
+  }
+
+  // STRICT TENANT ISOLATION:
+  // If user has 0 workspaces, all dashboard routes are strictly blocked!
+  // Hard redirect to the isolated /onboarding route.
+  if (!isLoadingTeams && teams.length === 0) {
+    return <Navigate to="/onboarding" replace />;
+  }
 
   return (
     <div className="relative min-h-screen bg-[#F8F9FA] overflow-hidden font-sans selection:bg-slate-200 selection:text-slate-900">
@@ -48,19 +62,9 @@ const DashboardLayout = () => {
       {/* Edge-to-Edge Canvas Area */}
       <main className="relative w-full h-screen overflow-y-auto lg:pl-28 pt-28 pb-28 lg:pb-8 pr-4 pl-4 lg:pr-12">
         <div className="w-full h-full max-w-[1600px] mx-auto">
-          {isLoadingTeams && teams.length === 0 ? (
-            <div className="h-[70vh] flex flex-col items-center justify-center text-slate-400">
-              <div className="w-8 h-8 rounded-full border-2 border-slate-300 border-t-slate-800 animate-spin mb-3" />
-              <span className="text-xs font-medium tracking-wide">Synchronizing workspace telemetry...</span>
-            </div>
-          ) : isOrphanedUser ? (
-            <Onboarding />
-          ) : (
-            <Outlet />
-          )}
+          <Outlet />
         </div>
       </main>
-      
     </div>
   );
 };
