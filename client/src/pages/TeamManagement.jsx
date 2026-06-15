@@ -58,14 +58,42 @@ const TeamManagement = () => {
     );
   }, [teamDetails, currentUserId, isOwner]);
 
-  // Filtered members by search
+  // Filtered and sorted members
   const filteredMembers = useMemo(() => {
     const members = teamDetails?.members || [];
-    if (!searchMemberQuery.trim()) return members;
-    const q = searchMemberQuery.toLowerCase().trim();
-    return members.filter((m) => {
-      const u = m.userId;
-      return u?.name?.toLowerCase().includes(q) || u?.email?.toLowerCase().includes(q);
+    
+    // 1. Filter by search query if any
+    let result = members;
+    if (searchMemberQuery.trim()) {
+      const q = searchMemberQuery.toLowerCase().trim();
+      result = members.filter((m) => {
+        const u = m.userId;
+        return u?.name?.toLowerCase().includes(q) || u?.email?.toLowerCase().includes(q);
+      });
+    }
+
+    // 2. Sort by role: Owner > Admin > Member (then alphabetically)
+    return [...result].sort((a, b) => {
+      const aId = (a.userId?._id || a.userId)?.toString();
+      const bId = (b.userId?._id || b.userId)?.toString();
+      const ownerIdStr = teamDetails?.ownerId?.toString();
+
+      const isAOwner = aId === ownerIdStr;
+      const isBOwner = bId === ownerIdStr;
+
+      if (isAOwner && !isBOwner) return -1;
+      if (!isAOwner && isBOwner) return 1;
+
+      const isAAdmin = a.role === 'admin';
+      const isBAdmin = b.role === 'admin';
+
+      if (isAAdmin && !isBAdmin) return -1;
+      if (!isAAdmin && isBAdmin) return 1;
+
+      // Fallback to alphabetical by name or email
+      const aName = a.userId?.name || a.userId?.email || '';
+      const bName = b.userId?.name || b.userId?.email || '';
+      return aName.localeCompare(bName);
     });
   }, [teamDetails, searchMemberQuery]);
 
