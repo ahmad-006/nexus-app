@@ -78,10 +78,12 @@ function App() {
           <Route path="/invitation/accept/:token" element={<AcceptInvite />} />
           <Route path="/accept-invite/:token" element={<AcceptInvite />} />
           
+          {/* Isolated Onboarding Route */}
+          <Route path="/onboarding" element={<Onboarding />} />
+          
           {/* Protected Routes Wrapper */}
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<Workspace />} />
-            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/dashboard/ticket/:id" element={<TicketDetail />} />
             <Route path="/my-tasks" element={<MyTasks />} />
             <Route path="/team" element={<TeamManagement />} />
