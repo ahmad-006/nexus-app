@@ -120,7 +120,7 @@ const NotificationBell = () => {
 
     // Deep-link navigation
     if (notification.type === 'TEAM_INVITE') {
-      navigate('/team');
+      navigate('/settings?tab=teams');
     } else if (notification.resourceId) {
       navigate(`/dashboard/ticket/${notification.resourceId}`);
     }
