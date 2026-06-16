@@ -22,7 +22,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
-import { useMyTeams } from '../hooks/useTeams';
+import { useMyTeams, useMyInvites, useAcceptInviteById, useDeclineInviteById } from '../hooks/useTeams';
 import {
   useUpdateProfile,
   useUploadAvatar,
@@ -37,6 +37,10 @@ export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuthStore();
   const { data: myTeams = [], isLoading: isLoadingTeams } = useMyTeams();
+  const { data: myInvites = [], isLoading: isLoadingInvites } = useMyInvites();
+  const pendingInvites = myInvites.filter((inv) => inv.status === 'PENDING');
+  const acceptInviteMutation = useAcceptInviteById();
+  const declineInviteMutation = useDeclineInviteById();
 
   const validTabs = ['profile', 'security', 'teams', 'danger'];
   const tabParam = searchParams.get('tab');
@@ -174,7 +178,13 @@ export default function Settings() {
   const tabs = [
     { id: 'profile', label: 'General Profile', icon: User },
     { id: 'security', label: 'Security & Access', icon: KeyRound },
-    { id: 'teams', label: 'Workspaces', icon: Briefcase, count: myTeams.length },
+    { 
+      id: 'teams', 
+      label: 'Workspaces', 
+      icon: Briefcase, 
+      count: myTeams.length,
+      badge: pendingInvites.length > 0 ? pendingInvites.length : null 
+    },
     { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
   ];
 
@@ -211,7 +221,12 @@ export default function Settings() {
             >
               <Icon size={16} className={isActive ? 'text-white' : 'text-slate-400'} />
               <span>{tab.label}</span>
-              {tab.count !== undefined && (
+              {tab.badge && (
+                <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-600 text-white shadow-sm animate-pulse">
+                  {tab.badge}
+                </span>
+              )}
+              {tab.count !== undefined && !tab.badge && (
                 <span
                   className={`ml-1 text-[11px] font-semibold px-1.5 py-0.2 rounded-full ${
                     isActive ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'
@@ -517,6 +532,90 @@ export default function Settings() {
       {/* Tab 3: Workspaces & Memberships */}
       {activeTab === 'teams' && (
         <div className="space-y-6 animate-in fade-in-50 duration-200">
+          {/* Pending Workspace Invitations Card Deck */}
+          {pendingInvites.length > 0 && (
+            <div className="bg-gradient-to-br from-blue-50/50 via-white to-indigo-50/30 rounded-2xl border border-blue-200/80 shadow-[0_4px_20px_rgba(37,99,235,0.05)] p-6 sm:p-8 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <Mail size={17} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <span>Pending Clearances & Invitations</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
+                        {pendingInvites.length} Action Required
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Workspaces requesting your operative authorization. Accepting will immediately switch your workspace context.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {pendingInvites.map((invite) => (
+                  <div
+                    key={invite._id}
+                    className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-sm flex flex-col justify-between gap-4 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-11 h-11 rounded-xl bg-slate-900 text-white font-black text-base flex items-center justify-center shrink-0 shadow-sm">
+                        {invite.teamId?.name?.charAt(0).toUpperCase() || 'W'}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-slate-900 truncate">
+                          {invite.teamId?.name || 'Collaborative Workspace'}
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Invited by {invite.inviterId?.name || 'Workspace Management'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            Full Operative Access
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            Valid 7 Days
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        disabled={declineInviteMutation.isPending || acceptInviteMutation.isPending}
+                        onClick={() => declineInviteMutation.mutate(invite._id)}
+                        className="flex-1 py-2 px-3 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        Decline
+                      </button>
+                      <button
+                        type="button"
+                        disabled={acceptInviteMutation.isPending || declineInviteMutation.isPending}
+                        onClick={() => acceptInviteMutation.mutate(invite._id)}
+                        className="flex-1 py-2 px-3 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                      >
+                        {acceptInviteMutation.isPending ? (
+                          <>
+                            <Loader2 size={13} className="animate-spin" />
+                            <span>Joining...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={13} />
+                            <span>Accept & Join</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] p-6 sm:p-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
