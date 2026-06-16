@@ -1,16 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, ChevronDown, Check, Building2, Plus } from 'lucide-react';
+import { Search, ChevronDown, Check, Building2, Plus, Mail, Loader2 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 import UserProfile from './UserProfile';
 import useTeamStore from '../../../store/teamStore';
-import { useMyTeams } from '../../../hooks/useTeams';
+import { useMyTeams, useMyInvites, useAcceptInviteById, useDeclineInviteById } from '../../../hooks/useTeams';
 import ProvisionWorkspaceModal from '../../team/ProvisionWorkspaceModal';
 
 const CommandPill = () => {
   const location = useLocation();
   const { teams: myTeams, activeTeam } = useMyTeams();
   const { setActiveTeam } = useTeamStore();
+  const { data: myInvites = [] } = useMyInvites();
+  const pendingInvites = myInvites.filter((inv) => inv.status === 'PENDING');
+  const acceptInviteMutation = useAcceptInviteById();
+  const declineInviteMutation = useDeclineInviteById();
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
@@ -56,19 +60,24 @@ const CommandPill = () => {
         <div className="relative" ref={dropdownRef}>
           <button 
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-1.5 hover:bg-slate-100/80 px-2 py-1 rounded-md transition-colors text-slate-600 hover:text-slate-900 group"
+            className="flex items-center gap-1.5 hover:bg-slate-100/80 px-2 py-1 rounded-md transition-colors text-slate-600 hover:text-slate-900 group relative"
           >
             <span className="hidden md:inline font-medium">{activeTeam?.name || 'Select Team'}</span>
+            {pendingInvites.length > 0 && (
+              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded-full leading-none shadow-sm animate-pulse">
+                {pendingInvites.length}
+              </span>
+            )}
             <ChevronDown className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isDropdownOpen && (
-            <div className="absolute top-full left-0 mt-2 w-60 bg-white rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.08)] py-1.5 animate-in fade-in slide-in-from-top-2 origin-top-left z-50">
+            <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.08)] py-1.5 animate-in fade-in slide-in-from-top-2 origin-top-left z-50">
               <div className="px-3 py-1.5 mb-1">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Your Teams</p>
               </div>
               
-              <div className="max-h-[260px] overflow-y-auto">
+              <div className="max-h-[220px] overflow-y-auto">
                 {myTeams.length === 0 ? (
                   <div className="px-3 py-3 text-xs text-slate-400 text-center">
                     No workspaces found
@@ -98,6 +107,64 @@ const CommandPill = () => {
                   ))
                 )}
               </div>
+
+              {/* Pending Invites Section */}
+              {pendingInvites.length > 0 && (
+                <div className="border-t border-slate-100 mt-1 pt-1.5">
+                  <div className="px-3 py-1 flex items-center justify-between">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 flex items-center gap-1">
+                      <Mail size={12} />
+                      <span>Pending Clearances ({pendingInvites.length})</span>
+                    </p>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto px-2 py-1 space-y-1.5">
+                    {pendingInvites.map((invite) => (
+                      <div key={invite._id} className="p-2 rounded-xl bg-slate-50 border border-slate-200/70 hover:bg-slate-100/70 transition-colors">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <div className="w-5 h-5 rounded-md bg-slate-900 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
+                            {invite.teamId?.name?.charAt(0).toUpperCase() || 'W'}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-slate-900 truncate">
+                              {invite.teamId?.name || 'Workspace'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={acceptInviteMutation.isPending || declineInviteMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              declineInviteMutation.mutate(invite._id);
+                            }}
+                            className="flex-1 py-1 px-2 rounded-lg border border-slate-200 bg-white text-[11px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
+                          >
+                            Decline
+                          </button>
+                          <button
+                            type="button"
+                            disabled={acceptInviteMutation.isPending || declineInviteMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              acceptInviteMutation.mutate(invite._id, {
+                                onSuccess: () => setIsDropdownOpen(false)
+                              });
+                            }}
+                            className="flex-1 py-1 px-2 rounded-lg bg-slate-900 text-[11px] font-semibold text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            {acceptInviteMutation.isPending ? (
+                              <Loader2 size={11} className="animate-spin" />
+                            ) : (
+                              <span>Join</span>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Action: Create Workspace */}
               <div className="p-1 border-t border-slate-100 mt-1">
