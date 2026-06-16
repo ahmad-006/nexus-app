@@ -11,7 +11,6 @@ import {
   ArrowUpRight,
   Activity,
   CheckCircle2,
-  Mail,
   Calendar,
   AlertCircle,
   Clock,
@@ -22,7 +21,6 @@ import useTeamStore from '../store/teamStore';
 import {
   useMyTeams,
   useTeamDetails,
-  useMyInvites,
   usePromoteMember,
   useRemoveMember,
   useTeamActivities
@@ -35,7 +33,6 @@ const TeamManagement = () => {
   const { activeTeamId, setActiveTeamId } = useTeamStore();
   const { teams = [], isLoading: isLoadingTeams } = useMyTeams();
   const { data: teamDetails, isLoading: isLoadingDetails } = useTeamDetails(activeTeamId);
-  const { data: myInvites = [] } = useMyInvites();
   const { data: activities = [], isLoading: isLoadingActivities } = useTeamActivities(activeTeamId);
 
   const promoteMutation = usePromoteMember(activeTeamId);
@@ -207,26 +204,7 @@ const TeamManagement = () => {
         </div>
       </div>
 
-      {/* 2. Pending Invites Banner (if applicable) */}
-      {myInvites.length > 0 && (
-        <div className="mt-6 p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/50 border border-blue-200/80 flex items-center justify-between gap-4 shadow-sm animate-in fade-in duration-200">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <Mail className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-blue-900">
-                You have {myInvites.length} pending workspace {myInvites.length === 1 ? 'invitation' : 'invitations'}
-              </p>
-              <p className="text-xs text-blue-600">
-                Check your email inbox to click the 7-day secure access link and join team workspaces.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Navigation Tabs */}
+      {/* 2. Navigation Tabs */}
       <div className="flex items-center justify-between mt-8 mb-6">
         <div className="flex items-center gap-2 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 shadow-inner">
           <button
