@@ -4,6 +4,7 @@ import { LayoutDashboard, CheckSquare, Users, BarChart3, Settings, LogOut } from
 import nexusLogo from '../../../assets/nexus_logo.png';
 import nexusIcon from '../../../assets/nexus_icon.png';
 import useAuthStore from '../../../store/authStore';
+import { useMyInvites } from '../../../hooks/useTeams';
 import ConfirmationModal from '../../ui/ConfirmationModal';
 
 const NAV_ITEMS = [
@@ -18,6 +19,8 @@ const FloatingDock = () => {
   const [isHovered, setIsHovered] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { logout } = useAuthStore();
+  const { data: myInvites = [] } = useMyInvites();
+  const pendingInvitesCount = myInvites.filter((inv) => inv.status === 'PENDING').length;
 
   const handleLogout = () => {
     logout();
@@ -76,14 +79,28 @@ const FloatingDock = () => {
                     <span className="lg:hidden absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-1 rounded-full bg-slate-900" />
                   )}
                   
-                  <item.icon 
-                    className={`w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 shrink-0 transition-colors ${isActive ? 'text-slate-900' : ''}`} 
-                    strokeWidth={2}
-                  />
+                  <div className="relative shrink-0 flex items-center justify-center">
+                    <item.icon 
+                      className={`w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 shrink-0 transition-colors ${isActive ? 'text-slate-900' : ''}`} 
+                      strokeWidth={2}
+                    />
+                    {item.to === '/settings' && pendingInvitesCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-blue-600 text-white text-[8px] sm:text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-sm animate-pulse">
+                        {pendingInvitesCount}
+                      </span>
+                    )}
+                  </div>
                   {isHovered && (
-                    <span className="hidden lg:block tracking-wide text-sm whitespace-nowrap animate-in fade-in duration-300">
-                      {item.label}
-                    </span>
+                    <div className="hidden lg:flex items-center justify-between flex-1 min-w-0 pr-1 animate-in fade-in duration-300">
+                      <span className="tracking-wide text-sm whitespace-nowrap">
+                        {item.label}
+                      </span>
+                      {item.to === '/settings' && pendingInvitesCount > 0 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-600 text-white">
+                          {pendingInvitesCount}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </>
               )}
