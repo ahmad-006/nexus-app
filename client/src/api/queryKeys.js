@@ -35,6 +35,7 @@ export const ticketKeys = {
   detail: (ticketId) => [...ticketKeys.details(), ticketId],
   comments: (ticketId) => [...ticketKeys.detail(ticketId), 'comments'],
   myTickets: () => [...ticketKeys.all, 'me'],
+  stats: (teamId) => [...ticketKeys.all, 'stats', teamId],
 };
 
 export const notificationKeys = {

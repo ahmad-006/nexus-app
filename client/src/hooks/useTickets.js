@@ -35,6 +35,11 @@ export const fetchMyTickets = async (signal) => {
   return response.data.data.tickets || [];
 };
 
+export const fetchTeamStats = async (teamId, signal) => {
+  const response = await axiosInstance.get(`/tickets/team/${teamId}/stats`, { signal });
+  return response.data.data.stats;
+};
+
 /**
  * ============================================================================
  * Query Hooks
@@ -50,6 +55,19 @@ export const useTeamTickets = (teamId) => {
     queryKey: ticketKeys.list(teamId),
     queryFn: ({ signal }) => fetchTeamTickets(teamId, signal),
     enabled: !!teamId,
+  });
+};
+
+/**
+ * Fetch aggregated statistics and distribution telemetry for a specific team.
+ * Cached under ticketKeys.stats(teamId).
+ */
+export const useTeamStats = (teamId) => {
+  return useQuery({
+    queryKey: ticketKeys.stats(teamId),
+    queryFn: ({ signal }) => fetchTeamStats(teamId, signal),
+    enabled: !!teamId,
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 };
 
@@ -206,6 +224,7 @@ export const useReorderTicket = (teamId) => {
     onSettled: () => {
       // Background refetch to ensure canonical position precision
       queryClient.invalidateQueries({ queryKey: ticketKeys.list(teamId) });
+      queryClient.invalidateQueries({ queryKey: ticketKeys.stats(teamId) });
     },
   });
 };
@@ -244,6 +263,7 @@ export const useCreateTicket = (teamId) => {
         ...oldTickets,
         newTicket,
       ]);
+      queryClient.invalidateQueries({ queryKey: ticketKeys.stats(teamId) });
       toast.success('Task created successfully');
     },
     onError: (err) => {
@@ -309,6 +329,9 @@ export const useUpdateTicket = (ticketId, teamId) => {
       toast.error(err.response?.data?.message || 'Failed to update ticket');
     },
     onSuccess: () => {
+      if (teamId) {
+        queryClient.invalidateQueries({ queryKey: ticketKeys.stats(teamId) });
+      }
       toast.success('Ticket updated');
     },
   });
@@ -330,6 +353,7 @@ export const useDeleteTicket = (ticketId, teamId) => {
         queryClient.setQueryData(ticketKeys.list(teamId), (oldTickets = []) =>
           oldTickets.filter((t) => t._id !== ticketId)
         );
+        queryClient.invalidateQueries({ queryKey: ticketKeys.stats(teamId) });
       }
       queryClient.removeQueries({ queryKey: ticketKeys.detail(ticketId) });
       toast.success('Ticket deleted successfully');
