@@ -13,6 +13,7 @@ import TeamManagement from './pages/TeamManagement';
 import AcceptInvite from './pages/AcceptInvite';
 import Settings from './pages/Settings';
 import Onboarding from './pages/Onboarding';
+import Analytics from './pages/Analytics';
 import useAuthStore from './store/authStore';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
@@ -87,11 +88,7 @@ function App() {
             <Route path="/dashboard/ticket/:id" element={<TicketDetail />} />
             <Route path="/my-tasks" element={<MyTasks />} />
             <Route path="/team" element={<TeamManagement />} />
-            <Route path="/analytics" element={
-              <div className="h-full w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white/50 flex items-center justify-center">
-                <p className="text-slate-400 font-medium tracking-wide">Analytics Canvas</p>
-              </div>
-            } />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>
