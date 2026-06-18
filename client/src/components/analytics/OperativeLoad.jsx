@@ -4,24 +4,37 @@ import Tooltip from '../ui/Tooltip';
 
 const OperativeLoad = ({ members = [], tickets = [], ownerId }) => {
   const { operatives, unassignedStats, totalAssigned } = useMemo(() => {
-    const unassignedTickets = tickets.filter((t) => !t.assigneeId);
+    // Single-pass ticket bucketing per assigneeId (O(N) vs previous O(N * M))
+    const memberTicketsMap = new Map();
+    const unassignedTickets = [];
     let assignedCount = 0;
+
+    for (let i = 0; i < tickets.length; i++) {
+      const t = tickets[i];
+      const aId = (t.assigneeId?._id || t.assigneeId)?.toString();
+      if (!aId) {
+        unassignedTickets.push(t);
+      } else {
+        assignedCount += 1;
+        let bucket = memberTicketsMap.get(aId);
+        if (!bucket) {
+          bucket = { total: 0, todo: 0, inProgress: 0, done: 0 };
+          memberTicketsMap.set(aId, bucket);
+        }
+        bucket.total += 1;
+        if (t.status === 'TODO') bucket.todo += 1;
+        else if (t.status === 'IN_PROGRESS') bucket.inProgress += 1;
+        else if (t.status === 'DONE') bucket.done += 1;
+      }
+    }
 
     const stats = members.map((m) => {
       const user = m.userId || {};
       const userIdStr = (user._id || user).toString();
       const isOwner = ownerId && ownerId.toString() === userIdStr;
 
-      const userTickets = tickets.filter((t) => {
-        const aId = (t.assigneeId?._id || t.assigneeId)?.toString();
-        return aId === userIdStr;
-      });
-
-      const total = userTickets.length;
-      assignedCount += total;
-      const todo = userTickets.filter((t) => t.status === 'TODO').length;
-      const inProgress = userTickets.filter((t) => t.status === 'IN_PROGRESS').length;
-      const done = userTickets.filter((t) => t.status === 'DONE').length;
+      const counts = memberTicketsMap.get(userIdStr) || { total: 0, todo: 0, inProgress: 0, done: 0 };
+      const { total, todo, inProgress, done } = counts;
       const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
 
       // Lean WIP Analysis: Concurrency constraint
@@ -48,9 +61,15 @@ const OperativeLoad = ({ members = [], tickets = [], ownerId }) => {
     // Sort: High Active WIP first, then total workload descending
     stats.sort((a, b) => b.inProgress - a.inProgress || b.total - a.total);
 
-    const unassignedTodo = unassignedTickets.filter((t) => t.status === 'TODO').length;
-    const unassignedInProgress = unassignedTickets.filter((t) => t.status === 'IN_PROGRESS').length;
-    const unassignedDone = unassignedTickets.filter((t) => t.status === 'DONE').length;
+    let unassignedTodo = 0;
+    let unassignedInProgress = 0;
+    let unassignedDone = 0;
+    for (let i = 0; i < unassignedTickets.length; i++) {
+      const status = unassignedTickets[i].status;
+      if (status === 'TODO') unassignedTodo += 1;
+      else if (status === 'IN_PROGRESS') unassignedInProgress += 1;
+      else if (status === 'DONE') unassignedDone += 1;
+    }
 
     return {
       operatives: stats,

@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   RefreshCw, 
   ArrowRight, 
   Kanban, 
-  Layers
+  Layers,
+  Building2,
+  AlertCircle
 } from 'lucide-react';
 import useTeamStore from '../store/teamStore';
 import { useTeamStats, useTeamTickets } from '../hooks/useTickets';
@@ -23,12 +25,30 @@ const Analytics = () => {
   const {
     data: stats,
     isLoading: isStatsLoading,
+    isError: isStatsError,
     isRefetching,
     refetch,
   } = useTeamStats(activeTeamId);
 
-  const { data: teamDetails, isLoading: isDetailsLoading } = useTeamDetails(activeTeamId);
-  const { data: tickets = [], isLoading: isTicketsLoading } = useTeamTickets(activeTeamId);
+  const { data: teamDetails, isLoading: isDetailsLoading, isError: isDetailsError } = useTeamDetails(activeTeamId);
+  const { data: tickets = [] } = useTeamTickets(activeTeamId);
+
+  const totalTickets = stats?.totalTickets || 0;
+  const teamMembers = teamDetails?.members || [];
+
+  // Calculate Workspace Operational Metrics
+  const { completionRate, doneCount } = useMemo(() => {
+    const sMap = (stats?.statusBreakdown || []).reduce((acc, item) => {
+      acc[item.status] = item.count;
+      return acc;
+    }, {});
+    const done = sMap.DONE || 0;
+    const rate = totalTickets > 0 ? Math.round((done / totalTickets) * 100) : 0;
+    return {
+      completionRate: rate,
+      doneCount: done,
+    };
+  }, [stats?.statusBreakdown, totalTickets]);
 
   const isLoading = (isStatsLoading && !stats) || (isDetailsLoading && !teamDetails);
 
@@ -36,9 +56,31 @@ const Analytics = () => {
     return <AnalyticsSkeleton />;
   }
 
+  if (isStatsError || isDetailsError) {
+    return (
+      <div className="h-full flex-1 flex flex-col items-center justify-center bg-[#F8F9FA] p-8 text-center min-h-[60vh]">
+        <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 shadow-2xs flex items-center justify-center text-rose-600 mb-4">
+          <AlertCircle size={28} />
+        </div>
+        <h3 className="text-base font-bold text-slate-800">Failed to Load Telemetry</h3>
+        <p className="text-xs text-slate-500 mt-1 max-w-sm mb-6">
+          Unable to aggregate workspace analytics from the server. Verify your connection or retry aggregation.
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-slate-400 focus:outline-none"
+        >
+          <RefreshCw size={13} className={isRefetching ? 'animate-spin' : ''} />
+          <span>Retry Aggregation</span>
+        </button>
+      </div>
+    );
+  }
+
   if (!activeTeamId) {
     return (
-      <div className="h-full flex-1 flex flex-col items-center justify-center bg-[#F8F9FA] p-8 text-center">
+      <div className="h-full flex-1 flex flex-col items-center justify-center bg-[#F8F9FA] p-8 text-center min-h-[60vh]">
         <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 mb-4">
           <Building2 size={28} />
         </div>
@@ -49,23 +91,6 @@ const Analytics = () => {
       </div>
     );
   }
-
-  const totalTickets = stats?.totalTickets || 0;
-  const teamMembers = teamDetails?.members || [];
-
-  // Calculate Composite Workspace Operational Health Score (0 - 100)
-  const statusMap = (stats?.statusBreakdown || []).reduce((acc, item) => {
-    acc[item.status] = item.count;
-    return acc;
-  }, {});
-  const priorityMap = (stats?.priorityBreakdown || []).reduce((acc, item) => {
-    acc[item.priority] = item.count;
-    return acc;
-  }, {});
-
-  const doneCount = statusMap.DONE || 0;
-  const inProgressCount = statusMap.IN_PROGRESS || 0;
-  const completionRate = totalTickets > 0 ? Math.round((doneCount / totalTickets) * 100) : 0;
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F8F9FA] relative min-h-screen">
@@ -124,9 +149,11 @@ const Analytics = () => {
           <div className="flex items-center gap-2.5">
             <Tooltip content="Refresh telemetry data directly from server aggregation">
               <button
+                type="button"
+                aria-label="Refresh telemetry data"
                 onClick={() => refetch()}
                 disabled={isRefetching}
-                className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200/80 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200/80 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer focus-visible:ring-2 focus-visible:ring-slate-400 focus:outline-none"
               >
                 <RefreshCw size={13} className={isRefetching ? 'animate-spin' : ''} />
                 <span className="hidden sm:inline">Refresh</span>

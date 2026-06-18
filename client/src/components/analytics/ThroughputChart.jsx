@@ -182,8 +182,9 @@ const ThroughputChart = ({ tickets = [] }) => {
         <div className="flex items-center gap-3">
           <div className="flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200/70 text-xs">
             <button
+              type="button"
               onClick={() => setActiveMetric('both')}
-              className={`px-2.5 py-1 rounded-md transition-colors ${
+              className={`px-2.5 py-1 rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-slate-400 focus:outline-none ${
                 activeMetric === 'both'
                   ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-500 hover:text-slate-800'
@@ -192,8 +193,9 @@ const ThroughputChart = ({ tickets = [] }) => {
               All Curves
             </button>
             <button
+              type="button"
               onClick={() => setActiveMetric('completed')}
-              className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-slate-400 focus:outline-none ${
                 activeMetric === 'completed'
                   ? 'bg-white text-emerald-700 shadow-2xs font-bold'
                   : 'text-slate-500 hover:text-slate-800'
@@ -203,8 +205,9 @@ const ThroughputChart = ({ tickets = [] }) => {
               Resolved ({totalCompleted14d})
             </button>
             <button
+              type="button"
               onClick={() => setActiveMetric('created')}
-              className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-slate-400 focus:outline-none ${
                 activeMetric === 'created'
                   ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-500 hover:text-slate-800'
@@ -231,6 +234,8 @@ const ThroughputChart = ({ tickets = [] }) => {
         className="relative w-full h-[220px] select-none cursor-crosshair overflow-hidden"
       >
         <svg
+          role="img"
+          aria-label="14-Day Delivery Velocity and Throughput Chart"
           viewBox={`0 0 ${svgPoints.width} ${chartHeight}`}
           className="w-full h-full overflow-visible"
           preserveAspectRatio="none"

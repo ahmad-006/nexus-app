@@ -130,7 +130,10 @@ export const Tooltip = ({
                 }}
                 className={`transform ${translateClasses[position]} flex flex-col items-center filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.25)]`}
               >
-                <div className="bg-slate-900 text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg border border-slate-700/80 whitespace-nowrap tracking-wide flex items-center gap-1.5 shadow-2xl leading-tight">
+                <div
+                  role="tooltip"
+                  className="bg-slate-900 text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg border border-slate-700/80 whitespace-nowrap tracking-wide flex items-center gap-1.5 shadow-2xl leading-tight"
+                >
                   {content}
                 </div>
                 <div className={`w-0 h-0 absolute ${arrowClasses[position]}`} />
