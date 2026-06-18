@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Copy, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import useAuthStore from '../store/authStore';
 import useTeamStore from '../store/teamStore';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
@@ -24,6 +25,21 @@ const TicketDetail = () => {
   const deleteTicketMutation = useDeleteTicket(id, activeTeam?._id);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const ticketIdStr = String(ticket?._id || '');
+  const ticketKey = ticketIdStr.length >= 4 ? `NEX-${ticketIdStr.slice(-4).toUpperCase()}` : 'NEX-TASK';
+
+  const handleCopyKey = async () => {
+    try {
+      await navigator.clipboard.writeText(ticketKey);
+      setIsCopied(true);
+      toast.success(`Copied ${ticketKey} to clipboard`);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    }
+  };
 
   const currentMember = activeTeam?.members?.find(m => 
     (m.userId?._id === user?._id) || (m.userId === user?._id)
@@ -101,10 +117,20 @@ const TicketDetail = () => {
             </Link>
             <span className="text-slate-300">|</span>
             <span className="hover:text-slate-900 cursor-pointer transition-colors">Workspace</span>
-            <span className="text-slate-300">/</span>
-            <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600">
-              {`NEX-${ticket._id.substring(ticket._id.length - 4).toUpperCase()}`}
-            </span>
+            <button
+              type="button"
+              onClick={handleCopyKey}
+              title="Click to copy ticket reference"
+              aria-label={`Copy ticket reference ${ticketKey}`}
+              className="inline-flex items-center gap-1.5 font-mono text-xs bg-slate-100 hover:bg-slate-200/80 text-slate-700 px-2 py-0.5 rounded border border-slate-200/80 transition-colors cursor-pointer group"
+            >
+              <span>{ticketKey}</span>
+              {isCopied ? (
+                <Check className="w-3 h-3 text-emerald-600" />
+              ) : (
+                <Copy className="w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-colors" />
+              )}
+            </button>
           </div>
 
           {canDelete && (
