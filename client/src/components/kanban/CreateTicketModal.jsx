@@ -92,6 +92,7 @@ const CreateTicketModal = ({ isOpen, onClose, onSubmit, isSubmitting, members = 
     <AnimatePresence>
       {/* 1. Backdrop */}
       <motion.div
+        key="create-ticket-backdrop"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -100,7 +101,7 @@ const CreateTicketModal = ({ isOpen, onClose, onSubmit, isSubmitting, members = 
       />
 
       {/* 2. Modal Centered Viewport Container */}
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 pointer-events-none">
+      <div key="create-ticket-viewport" className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 pointer-events-none">
         <motion.div
           initial={{ scale: 0.96, opacity: 0, y: 10 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -215,13 +216,13 @@ const CreateTicketModal = ({ isOpen, onClose, onSubmit, isSubmitting, members = 
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 focus:bg-white transition-all text-xs sm:text-sm text-slate-800 font-medium cursor-pointer"
               >
                 <option value="">Unassigned (Squad Backlog)</option>
-                {members.map((member) => {
+                {members.map((member, idx) => {
                   const u = member.userId;
-                  const memberId = (u?._id || member.userId)?.toString();
+                  const memberId = (u?._id || member._id || member.userId)?.toString() || '';
                   const memberName = u?.name || 'Operative';
                   const memberRole = member.role ? ` • ${member.role.toUpperCase()}` : '';
                   return (
-                    <option key={memberId} value={memberId}>
+                    <option key={memberId || `member-${idx}`} value={memberId}>
                       {memberName} ({u?.email || 'No email'}{memberRole})
                     </option>
                   );

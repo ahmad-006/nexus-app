@@ -2,36 +2,23 @@ import { useState } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import { toast } from 'sonner';
 import useTeamStore from '../../store/teamStore';
+import useCommandStore from '../../store/commandStore';
 import BoardColumn from './BoardColumn';
 import KanbanSkeleton from './KanbanSkeleton';
-import CreateTicketModal from './CreateTicketModal';
 import { Plus } from 'lucide-react';
-import { useTeamTickets, useReorderTicket, useCreateTicket } from '../../hooks/useTickets';
-import { useTeamDetails } from '../../hooks/useTeams';
+import { useTeamTickets, useReorderTicket } from '../../hooks/useTickets';
 
 const STATUSES = ['TODO', 'IN_PROGRESS', 'DONE'];
 
 const Workspace = () => {
   const { activeTeamId, isLoading: isTeamLoading } = useTeamStore();
+  const { openCreateTicket } = useCommandStore();
   const { data: tickets = [], isLoading: isTicketsLoading } = useTeamTickets(activeTeamId);
-  const { data: teamDetails } = useTeamDetails(activeTeamId);
-  const teamMembers = teamDetails?.members || [];
   const reorderTicketMutation = useReorderTicket(activeTeamId);
-  const createTicketMutation = useCreateTicket(activeTeamId);
 
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleCreateTicket = async (formData) => {
-    try {
-      await createTicketMutation.mutateAsync(formData);
-      setIsCreateModalOpen(false);
-    } catch (error) {
-      // Error toast is already displayed inside mutation
-    }
-  };
-
-  const onDragEnd = async (result) => {
+  const onDragEnd = (result) => {
     setIsDragging(false);
     const { source, destination, draggableId } = result;
 
@@ -111,15 +98,13 @@ const Workspace = () => {
 
       {/* Board Toolbar (Above Kanban Board) */}
       <div className="px-4 md:px-8 pt-1 pb-3 flex items-center justify-between z-10 shrink-0">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">Board</h2>
-          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-200/70 text-slate-600">
-            {tickets.length} {tickets.length === 1 ? 'task' : 'tasks'}
-          </span>
+          <span className="text-xs font-mono text-slate-500 tabular-nums">({tickets.length})</span>
         </div>
 
         <button
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={openCreateTicket}
           className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs md:text-sm font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
         >
           <Plus size={16} />
@@ -141,24 +126,15 @@ const Workspace = () => {
                 key={status} 
                 status={status} 
                 tickets={columnTickets}
-                onOpenCreateModal={() => setIsCreateModalOpen(true)}
+                onOpenCreateModal={openCreateTicket}
                 isDragging={isDragging} 
               />
             );
           })}
         </DragDropContext>
       </div>
-
-      <CreateTicketModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateTicket}
-        isSubmitting={createTicketMutation.isPending}
-        members={teamMembers}
-      />
     </div>
   );
 };
-
 
 export default Workspace;

@@ -1,19 +1,30 @@
 import { useEffect } from 'react';
-import { Outlet, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, Navigate, useNavigate } from 'react-router-dom';
 import FloatingDock from './Sidebar/FloatingDock';
 import CommandPill from './Header/CommandPill';
+import CommandPalette from './Header/CommandPalette';
+import CreateTicketModal from '../kanban/CreateTicketModal';
 import useAuthStore from '../../store/authStore';
-import { useMyTeams } from '../../hooks/useTeams';
+import useTeamStore from '../../store/teamStore';
+import useCommandStore from '../../store/commandStore';
+import { useMyTeams, useTeamDetails } from '../../hooks/useTeams';
+import { useCreateTicket } from '../../hooks/useTickets';
 import { socket } from '../../api/socket';
 import { useNotificationSocket } from '../../hooks/useNotifications';
+import { toast } from 'sonner';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, isAuthenticated } = useAuthStore();
+  const { activeTeamId } = useTeamStore();
+  const { toggleCommandPalette, isCreateTicketOpen, closeCreateTicket } = useCommandStore();
   const { teams = [], isLoading: isLoadingTeams } = useMyTeams({
     enabled: isAuthenticated && !!user?.isVerified,
   });
+
+  const { data: teamDetails } = useTeamDetails(activeTeamId);
+  const members = teamDetails?.members || [];
+  const createTicketMutation = useCreateTicket(activeTeamId);
 
   // Connect WebSocket when authenticated and clean up on unmount / logout
   useEffect(() => {
@@ -27,6 +38,31 @@ const DashboardLayout = () => {
 
   // Global socket listener for new_notification events
   useNotificationSocket(navigate);
+
+  // Global keydown listener for Command Palette (⌘K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleCommandPalette();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleCommandPalette]);
+
+  const handleCreateTicket = async (formData) => {
+    if (!activeTeamId) {
+      toast.error('Select a workspace before creating tasks');
+      return;
+    }
+    try {
+      await createTicketMutation.mutateAsync(formData);
+      closeCreateTicket();
+    } catch {
+      // Mutation onError handles user-facing error notification
+    }
+  };
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -58,7 +94,15 @@ const DashboardLayout = () => {
       {/* Spatial UI Overlays */}
       <CommandPill />
       <FloatingDock />
-      
+      <CommandPalette />
+      <CreateTicketModal
+        isOpen={isCreateTicketOpen}
+        onClose={closeCreateTicket}
+        onSubmit={handleCreateTicket}
+        isSubmitting={createTicketMutation.isPending}
+        members={members}
+      />
+
       {/* Edge-to-Edge Canvas Area */}
       <main className="relative w-full h-screen overflow-y-auto lg:pl-28 pt-28 pb-28 lg:pb-8 pr-4 pl-4 lg:pr-12">
         <div className="w-full h-full max-w-[1600px] mx-auto">

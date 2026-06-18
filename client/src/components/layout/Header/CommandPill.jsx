@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 import UserProfile from './UserProfile';
 import useTeamStore from '../../../store/teamStore';
+import useCommandStore from '../../../store/commandStore';
 import { useMyTeams, useMyInvites, useAcceptInviteById, useDeclineInviteById } from '../../../hooks/useTeams';
 import ProvisionWorkspaceModal from '../../team/ProvisionWorkspaceModal';
 
@@ -11,6 +12,7 @@ const CommandPill = () => {
   const location = useLocation();
   const { teams: myTeams, activeTeam } = useMyTeams();
   const { setActiveTeam } = useTeamStore();
+  const { openCommandPalette } = useCommandStore();
   const { data: myInvites = [] } = useMyInvites();
   const pendingInvites = myInvites.filter((inv) => inv.status === 'PENDING');
   const acceptInviteMutation = useAcceptInviteById();
@@ -32,6 +34,7 @@ const CommandPill = () => {
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isDropdownOpen) return;
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
@@ -39,7 +42,7 @@ const CommandPill = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isDropdownOpen]);
 
   return (
     <header className="fixed top-6 left-0 right-0 z-40 flex justify-between items-center px-4 sm:px-6 lg:px-12 pointer-events-none">
@@ -64,7 +67,7 @@ const CommandPill = () => {
           >
             <span className="hidden md:inline font-medium">{activeTeam?.name || 'Select Team'}</span>
             {pendingInvites.length > 0 && (
-              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded-full leading-none shadow-sm animate-pulse">
+              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded-full leading-none shadow-sm">
                 {pendingInvites.length}
               </span>
             )}
@@ -192,16 +195,22 @@ const CommandPill = () => {
 
       {/* The Command Pill (Center) */}
       <div className="flex-1 max-w-lg mx-auto pointer-events-auto">
-        <div className="relative group bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-[0_4px_20px_rgb(0,0,0,0.04)] rounded-full transition-shadow hover:shadow-[0_4px_25px_rgb(0,0,0,0.08)]">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+        <button
+          type="button"
+          onClick={openCommandPalette}
+          className="w-full flex items-center justify-between px-4 py-2.5 bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-[0_4px_20px_rgb(0,0,0,0.04)] rounded-full transition-all hover:shadow-[0_4px_25px_rgb(0,0,0,0.08)] hover:border-slate-300 text-left cursor-pointer group"
+          aria-label="Open command palette"
+        >
+          <div className="flex items-center gap-3 text-slate-400 group-hover:text-slate-600 transition-colors min-w-0">
+            <Search className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-slate-700 transition-colors" />
+            <span className="text-sm font-medium text-slate-400 group-hover:text-slate-600 truncate">
+              Search tickets, teammates, or commands...
+            </span>
           </div>
-          <input
-            type="text"
-            placeholder="Search tickets, teammates, or commands... (⌘K)"
-            className="block w-full pl-11 pr-4 py-3 bg-transparent border-none rounded-full leading-5 focus:outline-none focus:ring-0 text-sm text-slate-900 placeholder-slate-400 font-medium"
-          />
-        </div>
+          <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 text-[11px] font-mono font-semibold text-slate-500 bg-slate-100 border border-slate-200 rounded-md shadow-xs shrink-0">
+            ⌘K
+          </kbd>
+        </button>
       </div>
 
       {/* Actions (Right) */}
