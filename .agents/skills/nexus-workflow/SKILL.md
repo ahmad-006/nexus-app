@@ -65,6 +65,9 @@ Findings must strictly report:
   - Runs fresh verification commands in the terminal (`bun run build`, typecheck, lint, test).
   - For frontend UI tasks requiring actual interactive or visual behavior validation (routes, forms, modals, responsive layouts, client state transitions): autonomously executes browser verification using global Playwright MCP tools (`browser_navigate`, `browser_screenshot`, `browser_click`, `browser_console_messages`, DOM inspection).
   - Avoids excessive browser overhead for simple static styling or non-visual changes.
+  - **Token-Budgeting Protocols:**
+    - **Quiet Terminal Checks**: Runs linters and builds with output redirection (`bun run build > /dev/null 2>&1 || bun run build`). Only prints logs if the command fails with a non-zero exit code.
+    - **Surgical Browser Checks**: Prohibits full-page `browser_snapshot` calls that dump 20KB+ trees. Uses targeted `browser_evaluate` queries for specific element attributes or captures a single viewport screenshot.
 - **Rule:** Strictly prohibited from modifying application source code. Enforces **The Iron Law**: evidence before assertions always.
 
 ---
@@ -109,11 +112,10 @@ Incoming Task
 
 ## 4. End-to-End Execution Workflows
 
-### Workflow A: SMALL Task (Cosmetic / Localized)
-1. **Developer**: Reads target file and applies surgical edit.
+### Workflow A: SMALL Task (Cosmetic / Localized / < 30 lines)
+1. **Developer**: Reads target file and applies surgical edit directly. Subagents (`nexus-explorer`, `nexus-reviewer`) remain completely dormant to conserve context tokens.
    - If frontend: applies `anti-ai-slop` constraints.
-2. **Review**: Lightweight `nexus-reviewer` checks `git diff` against requirements.
-3. **Verifier**: Runs syntax/build check (`bun run build` or targeted lint).
+2. **Verifier**: Runs quiet syntax/build check (`bun run build > /dev/null 2>&1 || bun run build`). Avoids multi-agent or browser overhead unless visual proof is explicitly requested.
 
 ### Workflow B: NORMAL Task (Standard Feature / Frontend Page)
 1. **Explorer**: Inspects affected files and dependencies, outlines component boundaries.

@@ -55,6 +55,12 @@ AUDIT / REVIEW (Any Tier):
    - **Realtime / Kanban**: `nexus-realtime-audit` (only for Socket.io/drag-and-drop tasks).
    - **Specialist Dormancy**: `nexus-security-reviewer` and `nexus-realtime-reviewer` remain completely dormant unless their specific high-risk triggers are active.
 
+5. **Token-Budgeting & Context Conservation Protocol**:
+   - **Session Lifecycle**: Recommend a fresh session after completing and committing a major feature to reset context window token accumulation.
+   - **SMALL Task Conservation (< 30 lines, single file)**: Single-agent execution. Subagents `nexus-explorer` and `nexus-reviewer` remain completely dormant to save multi-agent serialization tokens. Verification uses local terminal checks only.
+   - **Surgical Browser Checks**: Prohibit full-page `browser_snapshot` calls that dump 20KB+ accessibility trees into the context. Use targeted `browser_evaluate` queries for specific element attributes or capture a single viewport screenshot.
+   - **Quiet Terminal Execution**: Run linters and builds with output redirection or quiet flags (`bun run build > /dev/null 2>&1 || bun run build`). Only display stdout/stderr when the exit code is non-zero. Never dump hundreds of warning lines into prompt context on successful builds.
+
 ---
 
 ## Agent Independence Protocols
