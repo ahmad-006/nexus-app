@@ -55,7 +55,7 @@ const FloatingDock = () => {
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
-              to={item.to}
+              to={item.to === '/settings' && pendingInvitesCount > 0 ? '/settings?tab=teams' : item.to}
               className={({ isActive }) =>
                 `relative flex items-center gap-4 rounded-xl transition-all duration-200 group
                 /* Mobile */
@@ -85,7 +85,7 @@ const FloatingDock = () => {
                       strokeWidth={2}
                     />
                     {item.to === '/settings' && pendingInvitesCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-blue-600 text-white text-[8px] sm:text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-sm animate-pulse">
+                      <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 bg-slate-900 text-white text-[9px] font-mono font-bold rounded flex items-center justify-center ring-1 ring-white shadow-xs">
                         {pendingInvitesCount}
                       </span>
                     )}
@@ -96,7 +96,7 @@ const FloatingDock = () => {
                         {item.label}
                       </span>
                       {item.to === '/settings' && pendingInvitesCount > 0 && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-600 text-white">
+                        <span className="text-[11px] font-mono font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 tabular-nums">
                           {pendingInvitesCount}
                         </span>
                       )}
