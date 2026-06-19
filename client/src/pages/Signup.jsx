@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Hexagon, ArrowRight, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import nexusLogo from '../assets/nexus_logo.png';
 import useAuthStore from '../store/authStore';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const Signup = () => {
+  useDocumentTitle('Create Account');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

@@ -37,6 +37,7 @@ import {
 } from '../hooks/useTeams';
 import nexusLogo from '../assets/nexus_logo.png';
 import { toast } from 'sonner';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const INDUSTRIES = [
   { id: 'Software Engineering', label: 'Software Engineering', icon: Cpu },
@@ -47,6 +48,7 @@ const INDUSTRIES = [
 ];
 
 export default function Onboarding() {
+  useDocumentTitle('Workspace Setup');
   const { user, isAuthenticated, logout } = useAuthStore();
   const { teams = [], isLoading: isLoadingTeams } = useMyTeams({
     enabled: isAuthenticated && !!user?.isVerified,

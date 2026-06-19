@@ -31,6 +31,14 @@ import {
 } from '../hooks/useUser';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import { toast } from 'sonner';
+import useDocumentTitle from '../hooks/useDocumentTitle';
+
+const TAB_TITLES = {
+  profile: 'Profile Settings',
+  security: 'Security Settings',
+  teams: 'Workspaces & Invites',
+  danger: 'Danger Zone',
+};
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -45,6 +53,7 @@ export default function Settings() {
   const validTabs = ['profile', 'security', 'teams', 'danger'];
   const tabParam = searchParams.get('tab');
   const activeTab = validTabs.includes(tabParam) ? tabParam : 'profile';
+  useDocumentTitle(TAB_TITLES[activeTab] || 'Settings');
 
   const setActiveTab = (tabId) => {
     setSearchParams({ tab: tabId });

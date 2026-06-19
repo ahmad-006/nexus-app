@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, ArrowDown, Hexagon, Search, Shield, Zap, CheckCircle2, Clock, MessageSquare, AlignLeft, Users, History } from 'lucide-react';
 import nexusLogo from '../assets/nexus_logo.png';
 import nexusIcon from '../assets/nexus_icon.png';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -18,6 +19,7 @@ const staggerContainer = {
 };
 
 const Landing = () => {
+  useDocumentTitle('Project Workspace & Engineering Workflow');
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-slate-900 font-sans selection:bg-slate-200 selection:text-slate-900 overflow-x-hidden">
       

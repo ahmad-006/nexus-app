@@ -7,10 +7,12 @@ import BoardColumn from './BoardColumn';
 import KanbanSkeleton from './KanbanSkeleton';
 import { Plus } from 'lucide-react';
 import { useTeamTickets, useReorderTicket } from '../../hooks/useTickets';
+import useDocumentTitle from '../../hooks/useDocumentTitle';
 
 const STATUSES = ['TODO', 'IN_PROGRESS', 'DONE'];
 
 const Workspace = () => {
+  useDocumentTitle('Kanban Board');
   const { activeTeamId, isLoading: isTeamLoading } = useTeamStore();
   const { openCreateTicket } = useCommandStore();
   const { data: tickets = [], isLoading: isTicketsLoading } = useTeamTickets(activeTeamId);

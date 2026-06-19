@@ -12,6 +12,7 @@ import TicketActivity from '../components/ticket/TicketActivity';
 import { useTicketDetail, useUpdateTicket, useDeleteTicket } from '../hooks/useTickets';
 import { useQueryClient } from '@tanstack/react-query';
 import { ticketKeys } from '../api/queryKeys';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const TicketDetail = () => {
   const { id } = useParams();
@@ -29,6 +30,8 @@ const TicketDetail = () => {
 
   const ticketIdStr = String(ticket?._id || '');
   const ticketKey = ticketIdStr.length >= 4 ? `NEX-${ticketIdStr.slice(-4).toUpperCase()}` : 'NEX-TASK';
+  const pageTitle = ticket?.title ? `${ticketKey}: ${ticket.title}` : 'Ticket Detail';
+  useDocumentTitle(pageTitle);
 
   const handleCopyKey = async () => {
     try {

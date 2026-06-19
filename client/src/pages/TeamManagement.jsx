@@ -27,8 +27,10 @@ import {
 } from '../hooks/useTeams';
 import InviteMemberModal from '../components/team/InviteMemberModal';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const TeamManagement = () => {
+  useDocumentTitle('Team');
   const { user } = useAuthStore();
   const { activeTeamId, setActiveTeamId } = useTeamStore();
   const { teams = [], isLoading: isLoadingTeams } = useMyTeams();

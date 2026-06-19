@@ -16,6 +16,7 @@ import {
   Inbox
 } from 'lucide-react';
 import { useMyUserTickets } from '../hooks/useTickets';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const PRIORITY_CONFIG = {
   HIGH: {
@@ -80,6 +81,7 @@ const MyTasksSkeleton = () => (
 );
 
 const MyTasks = () => {
+  useDocumentTitle('My Tasks');
   const { data, isLoading } = useMyUserTickets();
   const [activeTab, setActiveTab] = useState('ASSIGNED'); // 'ASSIGNED' | 'REPORTED'
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'TODO' | 'IN_PROGRESS' | 'DONE'

@@ -3,8 +3,10 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Hexagon, Loader2, ArrowLeft } from 'lucide-react';
 import nexusLogo from '../assets/nexus_logo.png';
 import useAuthStore from '../store/authStore';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const VerifyOtp = () => {
+  useDocumentTitle('Verify Email');
   const [searchParams] = useSearchParams();
   const emailParam = searchParams.get('email');
   

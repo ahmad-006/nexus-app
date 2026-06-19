@@ -3,8 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, Loader2, ArrowRight, Building2 } from 'lucide-react';
 import { useAcceptInvite } from '../hooks/useTeams';
 import useAuthStore from '../store/authStore';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const AcceptInvite = () => {
+  useDocumentTitle('Accept Invitation');
   const { token } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();

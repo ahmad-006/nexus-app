@@ -18,8 +18,10 @@ import OperativeLoad from '../components/analytics/OperativeLoad';
 import ThroughputChart from '../components/analytics/ThroughputChart';
 import AnalyticsSkeleton from '../components/analytics/AnalyticsSkeleton';
 import Tooltip from '../components/ui/Tooltip';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const Analytics = () => {
+  useDocumentTitle('Telemetry & Analytics');
   const { activeTeamId, activeTeam } = useTeamStore();
 
   const {
