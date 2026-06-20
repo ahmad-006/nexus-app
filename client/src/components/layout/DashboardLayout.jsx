@@ -11,6 +11,7 @@ import { useMyTeams, useTeamDetails } from '../../hooks/useTeams';
 import { useCreateTicket } from '../../hooks/useTickets';
 import { socket } from '../../api/socket';
 import { useNotificationSocket } from '../../hooks/useNotifications';
+import { useChatSocket, useUnreadMessageCounts } from '../../hooks/useChat';
 import { toast } from 'sonner';
 
 const DashboardLayout = () => {
@@ -39,17 +40,25 @@ const DashboardLayout = () => {
   // Global socket listener for new_notification events
   useNotificationSocket(navigate);
 
-  // Global keydown listener for Command Palette (⌘K / Ctrl+K)
+  // Global socket listener and unread polling for real-time chat
+  useChatSocket(activeTeamId);
+  useUnreadMessageCounts(activeTeamId);
+
+  // Global keydown listeners for Command Palette (⌘K) and Chat Drawer (⌘J)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         toggleCommandPalette();
       }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        navigate('/messages');
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleCommandPalette]);
+  }, [toggleCommandPalette, navigate]);
 
   const handleCreateTicket = async (formData) => {
     if (!activeTeamId) {

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Users, BarChart3, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Users, BarChart3, MessageSquare, Settings, LogOut } from 'lucide-react';
 import nexusLogo from '../../../assets/nexus_logo.png';
 import nexusIcon from '../../../assets/nexus_icon.png';
 import useAuthStore from '../../../store/authStore';
+import useChatStore from '../../../store/chatStore';
 import { useMyInvites } from '../../../hooks/useTeams';
 import ConfirmationModal from '../../ui/ConfirmationModal';
 
@@ -12,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/my-tasks', icon: CheckSquare, label: 'My Tasks' },
   { to: '/team', icon: Users, label: 'Team' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+  { to: '/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/settings', icon: Settings, label: 'Settings' }
 ];
 
@@ -19,8 +21,13 @@ const FloatingDock = () => {
   const [isHovered, setIsHovered] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { logout } = useAuthStore();
+  const { unreadCounts } = useChatStore();
   const { data: myInvites = [] } = useMyInvites();
   const pendingInvitesCount = myInvites.filter((inv) => inv.status === 'PENDING').length;
+  const unreadMessagesCount = Object.values(unreadCounts).reduce(
+    (sum, count) => sum + (Number(count) || 0),
+    0
+  );
 
   const handleLogout = () => {
     logout();
@@ -89,6 +96,11 @@ const FloatingDock = () => {
                         {pendingInvitesCount}
                       </span>
                     )}
+                    {item.to === '/messages' && unreadMessagesCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 bg-slate-900 text-white text-[9px] font-mono font-bold rounded flex items-center justify-center ring-1 ring-white shadow-xs">
+                        {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                      </span>
+                    )}
                   </div>
                   {isHovered && (
                     <div className="hidden lg:flex items-center justify-between flex-1 min-w-0 pr-1 animate-in fade-in duration-300">
@@ -98,6 +110,11 @@ const FloatingDock = () => {
                       {item.to === '/settings' && pendingInvitesCount > 0 && (
                         <span className="text-[11px] font-mono font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 tabular-nums">
                           {pendingInvitesCount}
+                        </span>
+                      )}
+                      {item.to === '/messages' && unreadMessagesCount > 0 && (
+                        <span className="text-[11px] font-mono font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 tabular-nums">
+                          {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
                         </span>
                       )}
                     </div>

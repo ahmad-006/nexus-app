@@ -14,6 +14,7 @@ import AcceptInvite from './pages/AcceptInvite';
 import Settings from './pages/Settings';
 import Onboarding from './pages/Onboarding';
 import Analytics from './pages/Analytics';
+import Messages from './pages/Messages';
 import useAuthStore from './store/authStore';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
@@ -89,6 +90,7 @@ function App() {
             <Route path="/my-tasks" element={<MyTasks />} />
             <Route path="/team" element={<TeamManagement />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/messages" element={<Messages />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>

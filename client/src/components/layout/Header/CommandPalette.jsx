@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X } from 'lucide-react';
 import useCommandStore from '../../../store/commandStore';
 import useTeamStore from '../../../store/teamStore';
+import useChatStore from '../../../store/chatStore';
 import { useTeamTickets } from '../../../hooks/useTickets';
 import { useTeamDetails } from '../../../hooks/useTeams';
 
@@ -13,12 +14,14 @@ const NAVIGATION_ROUTES = [
   { path: '/my-tasks', label: 'My Tasks' },
   { path: '/team', label: 'Team Management' },
   { path: '/analytics', label: 'Telemetry & Analytics' },
+  { path: '/messages', label: 'Messages & Team Chat' },
   { path: '/settings', label: 'Settings' },
 ];
 
 const CommandPalette = () => {
   const navigate = useNavigate();
   const { isOpen, closeCommandPalette, openCreateTicket } = useCommandStore();
+  const { setActiveConversation } = useChatStore();
   const { activeTeamId } = useTeamStore();
 
   const { data: tickets = [] } = useTeamTickets(activeTeamId);
@@ -69,6 +72,19 @@ const CommandPalette = () => {
         label: 'Create New Task',
         meta: 'Action',
         onSelect: () => openCreateTicket(),
+      });
+    }
+
+    if (activeTeamId && (!q || 'open messages'.includes(q) || 'chat'.includes(q) || 'message'.includes(q))) {
+      items.push({
+        id: 'action-open-chat',
+        category: 'Actions',
+        label: 'Open Messages',
+        meta: '⌘J',
+        onSelect: () => {
+          navigate('/messages');
+          closeCommandPalette();
+        },
       });
     }
 
@@ -124,10 +140,15 @@ const CommandPalette = () => {
           id: `member-${user?._id || m._id || email}`,
           category: 'Members',
           label: name,
-          meta: email || m.role,
+          meta: `Message ${name}`,
           role: m.role,
           onSelect: () => {
-            navigate('/team');
+            if (user?._id) {
+              setActiveConversation({ type: 'DM', id: user._id, name, user });
+              navigate('/messages');
+            } else {
+              navigate('/team');
+            }
             closeCommandPalette();
           },
         });
@@ -136,7 +157,7 @@ const CommandPalette = () => {
     items.push(...matchedMembers);
 
     return items;
-  }, [search, activeTeamId, tickets, members, navigate, openCreateTicket, closeCommandPalette]);
+  }, [search, activeTeamId, tickets, members, navigate, openCreateTicket, closeCommandPalette, setActiveConversation]);
 
   // Group flat items while preserving global indices for keyboard traversal
   const groupedItems = useMemo(() => {

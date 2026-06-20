@@ -3,6 +3,7 @@ import { Search, ChevronDown, Check, Building2, Plus, Mail, Loader2 } from 'luci
 import { useLocation } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 import UserProfile from './UserProfile';
+import ChatTrigger from '../../chat/ChatTrigger';
 import useTeamStore from '../../../store/teamStore';
 import useCommandStore from '../../../store/commandStore';
 import { useMyTeams, useMyInvites, useAcceptInviteById, useDeclineInviteById } from '../../../hooks/useTeams';
@@ -27,6 +28,7 @@ const CommandPill = () => {
     '/my-tasks': 'My Tasks',
     '/team': 'Team Management',
     '/analytics': 'Analytics',
+    '/messages': 'Messages',
     '/settings': 'Settings'
   };
   
@@ -214,7 +216,8 @@ const CommandPill = () => {
       </div>
 
       {/* Actions (Right) */}
-      <div className="flex items-center gap-3 pointer-events-auto bg-white/80 backdrop-blur-xl px-3 py-2 rounded-2xl border border-slate-200/60 shadow-[0_4px_16px_rgb(0,0,0,0.03)] hover:shadow-[0_4px_24px_rgb(0,0,0,0.06)] transition-all">
+      <div className="flex items-center gap-2 pointer-events-auto bg-white/80 backdrop-blur-xl px-3 py-2 rounded-2xl border border-slate-200/60 shadow-[0_4px_16px_rgb(0,0,0,0.03)] hover:shadow-[0_4px_24px_rgb(0,0,0,0.06)] transition-all">
+        <ChatTrigger />
         <NotificationBell />
         <div className="h-5 w-px bg-slate-200"></div>
         <UserProfile />
