@@ -1,17 +1,22 @@
+import mongoose from "mongoose";
 import { Message } from "../models/Message.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 import { socketManager } from "../util/socket.js";
 
 /**
- * @desc    Get all messages for a specific team
- * @route   GET /api/messages/team/:teamId
+ * @desc    Get all group messages for a specific team (excludes 1-on-1 private messages)
+ * @route   GET /api/messages/:teamId/group
  * @access  Private
  */
 export const getMessagesByTeam = catchAsync(async (req, res, next) => {
   const { teamId } = req.params;
 
-  const messages = await Message.find({ teamId })
+  // Strict tenant and isolation filter: only messages with no receiverId belong to team group
+  const messages = await Message.find({
+    teamId,
+    $or: [{ receiverId: null }, { receiverId: { $exists: false } }],
+  })
     .populate("senderId", "name image email")
     .sort({ createdAt: 1 });
 
@@ -25,8 +30,8 @@ export const getMessagesByTeam = catchAsync(async (req, res, next) => {
 });
 
 /**
- * @desc    Get all private messages between two users
- * @route   GET /api/messages/:otherUserId
+ * @desc    Get all private messages between two users in a team
+ * @route   GET /api/messages/:teamId/:otherUserId
  * @access  Private
  */
 export const getMessagesByUsers = catchAsync(async (req, res) => {
@@ -39,13 +44,54 @@ export const getMessagesByUsers = catchAsync(async (req, res) => {
       { senderId: otherUserId, receiverId: userId },
     ],
     teamId,
-  }).sort({ createdAt: 1 });
+  })
+    .populate("senderId", "name image email")
+    .populate("receiverId", "name image email")
+    .sort({ createdAt: 1 });
 
   res.status(200).json({
     status: "success",
     results: messages.length,
     data: {
       messages,
+    },
+  });
+});
+
+/**
+ * @desc    Get unread message counts per sender in a team
+ * @route   GET /api/messages/:teamId/unread
+ * @access  Private
+ */
+export const getUnreadCounts = catchAsync(async (req, res) => {
+  const { teamId } = req.params;
+  const userId = req.user.id;
+
+  const unreadMessages = await Message.aggregate([
+    {
+      $match: {
+        teamId: new mongoose.Types.ObjectId(teamId),
+        receiverId: new mongoose.Types.ObjectId(userId),
+        isRead: false,
+      },
+    },
+    {
+      $group: {
+        _id: "$senderId",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const counts = {};
+  unreadMessages.forEach((item) => {
+    counts[item._id.toString()] = item.count;
+  });
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      counts,
     },
   });
 });
@@ -59,13 +105,11 @@ export const readAllMessages = catchAsync(async (req, res) => {
   const { senderId } = req.params;
   const { id: receiverId } = req.user;
 
-  // 1. ALL Messages are read at once
   await Message.updateMany(
     { senderId, receiverId, isRead: false },
     { $set: { isRead: true } },
   );
 
-  // 2. Real-time Notification (Tell the sender their messages were seen)
   const io = socketManager.getIO();
   if (io) {
     io.to(`user_${senderId}`).emit("messages_read", {
@@ -81,7 +125,7 @@ export const readAllMessages = catchAsync(async (req, res) => {
 });
 
 /**
- * @desc    Update a private message (Edit)
+ * @desc    Update a message (Edit)
  * @route   PATCH /api/messages/:messageId
  * @access  Private (Sender only)
  */
@@ -93,12 +137,11 @@ export const updateMessage = catchAsync(async (req, res, next) => {
   if (!newMessage)
     return next(new AppError("Message content is required", 400));
 
-  // 1. Find and Verify Ownership (Senior Move: One query)
   const updatedMessage = await Message.findOneAndUpdate(
     { _id: messageId, senderId: userId },
     { message: newMessage, isEdited: true },
     { new: true, runValidators: true },
-  );
+  ).populate("senderId", "name image email");
 
   if (!updatedMessage) {
     return next(
@@ -109,14 +152,28 @@ export const updateMessage = catchAsync(async (req, res, next) => {
     );
   }
 
-  // 2. Real-time Notification (Update the receiver's UI instantly)
   const io = socketManager.getIO();
   if (io) {
-    io.to(`user_${updatedMessage.receiverId}`).emit("message_updated", {
-      _id: updatedMessage._id,
-      message: updatedMessage.message,
-      isEdited: true,
-    });
+    if (updatedMessage.receiverId) {
+      io.to(`user_${updatedMessage.receiverId}`)
+        .to(`user_${userId}`)
+        .emit("message_updated", {
+          _id: updatedMessage._id,
+          message: updatedMessage.message,
+          isEdited: true,
+          teamId: updatedMessage.teamId,
+          receiverId: updatedMessage.receiverId,
+          senderId: updatedMessage.senderId,
+        });
+    } else {
+      io.to(`team_${updatedMessage.teamId}`).emit("message_updated", {
+        _id: updatedMessage._id,
+        message: updatedMessage.message,
+        isEdited: true,
+        teamId: updatedMessage.teamId,
+        senderId: updatedMessage.senderId,
+      });
+    }
   }
 
   res.status(200).json({
@@ -126,3 +183,52 @@ export const updateMessage = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+/**
+ * @desc    Delete a message
+ * @route   DELETE /api/messages/:messageId
+ * @access  Private (Sender only)
+ */
+export const deleteMessage = catchAsync(async (req, res, next) => {
+  const { messageId } = req.params;
+  const userId = req.user.id;
+
+  const message = await Message.findOneAndDelete({
+    _id: messageId,
+    senderId: userId,
+  });
+
+  if (!message) {
+    return next(
+      new AppError(
+        "Message not found or you are not authorized to delete it",
+        404,
+      ),
+    );
+  }
+
+  const io = socketManager.getIO();
+  if (io) {
+    if (message.receiverId) {
+      io.to(`user_${message.receiverId}`)
+        .to(`user_${userId}`)
+        .emit("message_deleted", {
+          _id: messageId,
+          teamId: message.teamId,
+          receiverId: message.receiverId,
+          senderId: message.senderId,
+        });
+    } else {
+      io.to(`team_${message.teamId}`).emit("message_deleted", {
+        _id: messageId,
+        teamId: message.teamId,
+      });
+    }
+  }
+
+  res.status(200).json({
+    status: "success",
+    message: "Message deleted successfully",
+  });
+});
+

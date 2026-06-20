@@ -100,11 +100,10 @@ export const socketManager = {
       // --- TEAM CHAT LOGIC ---
       /**
        * @event send_team_message
-       * @param {Object} data - { teamId, message }
+       * @param {Object} data - { teamId, message, tempId }
        */
-
       socket.on("send_team_message", async (data) => {
-        const { teamId, message } = data;
+        const { teamId, message, tempId } = data || {};
 
         if (!teamId || !message) return;
 
@@ -123,21 +122,32 @@ export const socketManager = {
 
         const roomName = `team_${teamId}`;
 
-        // Shout to everyone in the room
+        // Broadcast to everyone in the team room
         io.to(roomName).emit("receive_team_message", {
           _id: savedMessage._id,
           senderName: socket.user.name,
-          senderId: socket.user._id,
+          senderId: {
+            _id: socket.user._id,
+            name: socket.user.name,
+            email: socket.user.email,
+            image: socket.user.image,
+          },
           message: message,
+          createdAt: savedMessage.createdAt,
           timestamp: savedMessage.createdAt,
           teamId: teamId,
+          tempId: tempId || null,
         });
 
         console.log(`Chat in ${roomName}: ${socket.user.name} -> ${message}`);
       });
 
+      /**
+       * @event send_private_message
+       * @param {Object} data - { receiverId, message, teamId, tempId }
+       */
       socket.on("send_private_message", async (data) => {
-        const { receiverId, message, teamId } = data;
+        const { receiverId, message, teamId, tempId } = data || {};
         if (!receiverId || !message || !teamId) return;
 
         // 1. Persistence (Save to Database with team context)
@@ -152,18 +162,63 @@ export const socketManager = {
         const receiverRoom = `user_${receiverId}`;
         const senderRoom = `user_${socket.user._id}`;
 
-        // 3. Emit Full Payload to Both
-        io.to(receiverRoom).to(senderRoom).emit("receive_private_message", {
+        const payload = {
           _id: savedMessage._id,
-          senderId: socket.user._id,
+          senderId: {
+            _id: socket.user._id,
+            name: socket.user.name,
+            email: socket.user.email,
+            image: socket.user.image,
+          },
+          receiverId,
           senderName: socket.user.name,
           message: savedMessage.message,
+          createdAt: savedMessage.createdAt,
           timestamp: savedMessage.createdAt,
-        });
+          teamId,
+          tempId: tempId || null,
+          isRead: false,
+        };
+
+        // 3. Emit Full Payload to Both
+        io.to(receiverRoom).to(senderRoom).emit("receive_private_message", payload);
 
         console.log(
           `Private: ${socket.user.name} -> User(${receiverId}): ${message}`,
         );
+      });
+
+      // Typing indicators
+      socket.on("typing_start", (data) => {
+        const { teamId, conversationId, isDM, receiverId } = data || {};
+        if (isDM && receiverId) {
+          io.to(`user_${receiverId}`).emit("user_typing", {
+            conversationId,
+            userId: socket.user._id.toString(),
+            userName: socket.user.name,
+          });
+        } else if (teamId) {
+          socket.to(`team_${teamId}`).emit("user_typing", {
+            conversationId: conversationId || teamId,
+            userId: socket.user._id.toString(),
+            userName: socket.user.name,
+          });
+        }
+      });
+
+      socket.on("typing_stop", (data) => {
+        const { teamId, conversationId, isDM, receiverId } = data || {};
+        if (isDM && receiverId) {
+          io.to(`user_${receiverId}`).emit("user_stop_typing", {
+            conversationId,
+            userId: socket.user._id.toString(),
+          });
+        } else if (teamId) {
+          socket.to(`team_${teamId}`).emit("user_stop_typing", {
+            conversationId: conversationId || teamId,
+            userId: socket.user._id.toString(),
+          });
+        }
       });
 
       socket.on("disconnect", () => {
