@@ -42,3 +42,11 @@ export const notificationKeys = {
   all: ['notifications'],
   list: () => [...notificationKeys.all, 'list'],
 };
+
+export const messageKeys = {
+  all: ['messages'],
+  team: (teamId) => [...messageKeys.all, 'team', teamId],
+  direct: (teamId, otherUserId) => [...messageKeys.all, 'direct', teamId, otherUserId],
+  unread: (teamId) => [...messageKeys.all, 'unread', teamId],
+};
+
