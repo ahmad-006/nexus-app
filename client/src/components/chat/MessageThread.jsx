@@ -1,8 +1,55 @@
 import { useEffect, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
+import { Users, Lock } from 'lucide-react';
 import MessageItem from './MessageItem';
 
+function ConversationInception({ conversation }) {
+  const isTeam = conversation?.type === 'TEAM';
+  const name = conversation?.name || 'Conversation';
+  const user = conversation?.user || {};
+
+  return (
+    <div className="px-6 pt-6 pb-4 mb-3 border-b border-slate-100 dark:border-slate-800 select-none">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-800 dark:text-slate-200 shadow-xs font-semibold text-base font-mono">
+          {isTeam ? (
+            <Users className="w-6 h-6 text-slate-700 dark:text-slate-300" />
+          ) : user.image ? (
+            <img
+              src={user.image}
+              alt={name}
+              className="w-12 h-12 rounded-2xl object-cover"
+            />
+          ) : (
+            name[0]?.toUpperCase() || 'U'
+          )}
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+            {name}
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-lg leading-relaxed flex items-center gap-1.5">
+            {!isTeam && <Lock className="w-3 h-3 text-slate-400 shrink-0" />}
+            {isTeam
+              ? `Workspace channel. All members of the active workspace can participate.`
+              : `Direct conversation with ${user.email || name}. Messages are private to participants.`}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ConversationInception.propTypes = {
+  conversation: PropTypes.shape({
+    type: PropTypes.string,
+    name: PropTypes.string,
+    user: PropTypes.object,
+  }),
+};
+
 export default function MessageThread({
+  conversation,
   messages = [],
   isLoading,
   currentUserId,
@@ -76,7 +123,7 @@ export default function MessageThread({
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-slate-900 py-3 divide-y divide-transparent select-text"
+      className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-slate-900 select-text"
     >
       {isLoading ? (
         <div className="space-y-4 px-4 py-6">
@@ -90,61 +137,59 @@ export default function MessageThread({
             </div>
           ))}
         </div>
-      ) : messages.length === 0 ? (
-        <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
-          <div className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-800 flex items-center justify-center mb-3">
-            <span className="font-mono text-xs">#</span>
-          </div>
-          <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-            No messages yet
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Send a message to start the conversation.
-          </p>
-        </div>
       ) : (
-        processedItems.map((item) => {
-          if (item.type === 'DATE_DIVIDER') {
-            return (
-              <div
-                key={item.id}
-                className="relative my-4 flex items-center justify-center"
-              >
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-100 dark:border-slate-800" />
-                </div>
-                <span className="relative bg-white dark:bg-slate-900 px-3 text-[10px] font-mono text-slate-400 select-none">
-                  {item.label}
-                </span>
-              </div>
-            );
-          }
+        <div className="min-h-full flex flex-col justify-end py-3">
+          <ConversationInception conversation={conversation} />
 
-          return (
-            <MessageItem
-              key={item.id}
-              message={item.data}
-              currentUserId={currentUserId}
-              isGrouped={item.isGrouped}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          );
-        })
-      )}
+          {messages.length === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-400 italic">
+              No messages yet. Send a message to start the conversation.
+            </div>
+          ) : (
+            processedItems.map((item) => {
+              if (item.type === 'DATE_DIVIDER') {
+                return (
+                  <div
+                    key={item.id}
+                    className="relative my-4 flex items-center justify-center"
+                  >
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-100 dark:border-slate-800" />
+                    </div>
+                    <span className="relative bg-white dark:bg-slate-900 px-3 text-[10px] font-mono text-slate-400 select-none">
+                      {item.label}
+                    </span>
+                  </div>
+                );
+              }
 
-      {/* Typing Indicator */}
-      {typingUsers.length > 0 && (
-        <div className="px-4 py-2 flex items-center gap-2 text-[11px] font-mono text-slate-400 animate-pulse">
-          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-          <span>
-            {typingUsers.map((u) => u.userName).join(', ')}{' '}
-            {typingUsers.length === 1 ? 'is' : 'are'} typing...
-          </span>
+              return (
+                <MessageItem
+                  key={item.id}
+                  message={item.data}
+                  currentUserId={currentUserId}
+                  isGrouped={item.isGrouped}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              );
+            })
+          )}
+
+          {/* Typing Indicator */}
+          {typingUsers.length > 0 && (
+            <div className="px-4 py-2 flex items-center gap-2 text-[11px] font-mono text-slate-400 animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+              <span>
+                {typingUsers.map((u) => u.userName).join(', ')}{' '}
+                {typingUsers.length === 1 ? 'is' : 'are'} typing...
+              </span>
+            </div>
+          )}
+
+          <div ref={bottomRef} className="h-2" />
         </div>
       )}
-
-      <div ref={bottomRef} className="h-2" />
     </div>
   );
 }
@@ -165,6 +210,7 @@ function formatDateDivider(date) {
 }
 
 MessageThread.propTypes = {
+  conversation: PropTypes.object,
   messages: PropTypes.array,
   isLoading: PropTypes.bool,
   currentUserId: PropTypes.string,

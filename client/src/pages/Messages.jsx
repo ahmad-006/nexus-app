@@ -45,7 +45,7 @@ export default function Messages() {
     activeConversation?.type === 'TEAM'
       ? `${teamName} Group`
       : activeConversation?.name || 'Messages';
-  useDocumentTitle(`${activeTitle} | Messages`);
+  useDocumentTitle(activeTitle);
 
   // Active chat queries
   const isTeam = activeConversation?.type === 'TEAM';
@@ -76,10 +76,11 @@ export default function Messages() {
 
   // Filter teammates
   const filteredMembers = useMemo(() => {
+    const curIdStr = String(currentUserId || '');
     return members
       .filter((m) => {
         const mId = m.userId?._id || m.userId;
-        return mId !== currentUserId;
+        return String(mId || '') !== curIdStr;
       })
       .filter((m) => {
         if (!memberSearch.trim()) return true;
@@ -96,7 +97,7 @@ export default function Messages() {
     typingUsers[isTeam ? 'team' : activeConversation?.id] || [];
 
   return (
-    <div className="w-full h-[calc(100vh-14rem)] lg:h-[calc(100vh-9rem)] bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_4px_24px_rgb(0,0,0,0.03)] flex overflow-hidden">
+    <div className="w-full h-full min-h-[520px] bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_4px_24px_rgb(0,0,0,0.03)] flex overflow-hidden">
       {/* Left Pane: Conversations Navigation (Width: 300px) */}
       <aside
         className={`${
@@ -129,126 +130,121 @@ export default function Messages() {
           </div>
         </div>
 
-        {/* Scrollable Conversation List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-4">
-          {/* Section 1: Team Group Room */}
-          <div>
-            <div className="px-2 mb-1.5 text-[10px] font-mono font-medium tracking-wider text-slate-400 uppercase">
-              Workspace Room
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveConversation({
-                  type: 'TEAM',
-                  id: 'team',
-                  name: `${teamName} Group`,
-                });
-                setShowMobileList(false);
-              }}
-              className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${
-                activeConversation?.type === 'TEAM'
-                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs border border-slate-200/80 dark:border-slate-700'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/40 dark:hover:bg-slate-800/40 border border-transparent'
-              }`}
-            >
-              <div className="flex items-center gap-3 truncate">
-                <div className="w-8 h-8 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 flex items-center justify-center shrink-0 shadow-xs font-semibold text-xs">
-                  <Users className="w-4 h-4" />
+        {/* Pinned Section: Workspace Group Room */}
+        <div className="p-3 border-b border-slate-200/60 dark:border-slate-800 shrink-0 bg-slate-50/40 dark:bg-slate-900/40">
+          <div className="px-2 mb-1.5 text-[10px] font-mono font-medium tracking-wider text-slate-400 uppercase">
+            Workspace Room
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveConversation({
+                type: 'TEAM',
+                id: 'team',
+                name: `${teamName} Group`,
+              });
+              setShowMobileList(false);
+            }}
+            className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer border ${
+              activeConversation?.type === 'TEAM'
+                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs border-slate-300 dark:border-slate-700 border-l-4 border-l-slate-900 dark:border-l-slate-100 font-semibold'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/40 dark:hover:bg-slate-800/40 border-transparent'
+            }`}
+          >
+            <div className="flex items-center gap-3 truncate">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 flex items-center justify-center shrink-0 shadow-xs font-semibold text-xs">
+                <Users className="w-4 h-4" />
+              </div>
+              <div className="truncate">
+                <div className="text-xs font-semibold truncate">
+                  {teamName} Group
                 </div>
-                <div className="truncate">
-                  <div className="text-xs font-semibold truncate">
-                    {teamName} Group
-                  </div>
-                  <div className="text-[11px] text-slate-400 truncate">
-                    All-hands team discussion
-                  </div>
+                <div className="text-[11px] text-slate-400 truncate">
+                  All-hands team discussion
                 </div>
               </div>
-
-              {teamUnread > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 tabular-nums">
-                  {teamUnread}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Section 2: Direct Chats */}
-          <div>
-            <div className="px-2 mb-1.5 text-[10px] font-mono font-medium tracking-wider text-slate-400 uppercase">
-              Direct Chats ({filteredMembers.length})
             </div>
-            <div className="space-y-1">
-              {filteredMembers.length === 0 ? (
-                <div className="px-3 py-4 text-center text-[11px] text-slate-400 italic">
-                  {memberSearch ? 'No matching teammates' : 'No other teammates'}
-                </div>
-              ) : (
-                filteredMembers.map((member) => {
-                  const u = member.userId || {};
-                  const memberId = u._id || member.userId;
-                  const memberName = u.name || member.email || 'Teammate';
-                  const isSelected =
-                    activeConversation?.type === 'DM' &&
-                    activeConversation?.id === memberId;
-                  const unread = unreadCounts[memberId] || 0;
 
-                  return (
-                    <button
-                      key={memberId}
-                      type="button"
-                      onClick={() => {
-                        setActiveConversation({
-                          type: 'DM',
-                          id: memberId,
-                          name: memberName,
-                          user: u,
-                        });
-                        setShowMobileList(false);
-                      }}
-                      className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs border border-slate-200/80 dark:border-slate-700'
-                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/40 dark:hover:bg-slate-800/40 border border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 truncate">
-                        <div className="relative shrink-0">
-                          {u.image ? (
-                            <img
-                              src={u.image}
-                              alt={memberName}
-                              className="w-7 h-7 rounded-full object-cover border border-slate-200 dark:border-slate-700"
-                            />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-mono font-medium">
-                              {memberName[0]?.toUpperCase() || 'U'}
-                            </div>
-                          )}
-                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
-                        </div>
-                        <div className="truncate">
-                          <div className="text-xs font-semibold truncate leading-tight">
-                            {memberName}
-                          </div>
-                          <div className="text-[10px] font-mono text-slate-400 truncate">
-                            {member.role || 'Member'}
-                          </div>
-                        </div>
-                      </div>
+            {teamUnread > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 tabular-nums">
+                {teamUnread}
+              </span>
+            )}
+          </button>
+        </div>
 
-                      {unread > 0 && (
-                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 tabular-nums">
-                          {unread}
-                        </span>
+        {/* Scrollable Section: Direct Chats */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1 min-h-0">
+          <div className="px-2 mb-1.5 text-[10px] font-mono font-medium tracking-wider text-slate-400 uppercase">
+            Direct Chats ({filteredMembers.length})
+          </div>
+          {filteredMembers.length === 0 ? (
+            <div className="px-3 py-4 text-center text-[11px] text-slate-400 italic">
+              {memberSearch ? 'No matching teammates' : 'No other teammates'}
+            </div>
+          ) : (
+            filteredMembers.map((member) => {
+              const u = member.userId || {};
+              const memberId = u._id || member.userId;
+              const memberName = u.name || member.email || 'Teammate';
+              const isSelected =
+                activeConversation?.type === 'DM' &&
+                activeConversation?.id === memberId;
+              const unread = unreadCounts[memberId] || 0;
+
+              return (
+                <button
+                  key={memberId}
+                  type="button"
+                  onClick={() => {
+                    setActiveConversation({
+                      type: 'DM',
+                      id: memberId,
+                      name: memberName,
+                      user: u,
+                    });
+                    setShowMobileList(false);
+                  }}
+                  className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all cursor-pointer border ${
+                    isSelected
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs border-slate-300 dark:border-slate-700 border-l-4 border-l-slate-900 dark:border-l-slate-100 font-semibold'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/40 dark:hover:bg-slate-800/40 border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 truncate">
+                    <div className="relative shrink-0">
+                      {u.image ? (
+                        <img
+                          src={u.image}
+                          alt={memberName}
+                          className="w-7 h-7 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-mono font-medium">
+                          {memberName[0]?.toUpperCase() || 'U'}
+                        </div>
                       )}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
+                      <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 pointer-events-none" />
+                    </div>
+                    <div className="truncate">
+                      <div className="text-xs font-semibold truncate leading-tight">
+                        {memberName}
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-400 truncate">
+                        {member.role || 'Member'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {unread > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 tabular-nums">
+                      {unread}
+                    </span>
+                  )}
+                </button>
+              );
+            })
+          )}
         </div>
       </aside>
 
@@ -288,7 +284,7 @@ export default function Messages() {
                     {activeConversation?.name?.[0]?.toUpperCase() || 'U'}
                   </div>
                 )}
-                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 pointer-events-none" />
               </div>
             )}
             <div className="truncate">
@@ -307,6 +303,7 @@ export default function Messages() {
         {/* Message Stream */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <MessageThread
+            conversation={activeConversation}
             messages={messages}
             isLoading={isLoading}
             currentUserId={currentUserId}
