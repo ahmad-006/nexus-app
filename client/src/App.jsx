@@ -22,15 +22,16 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 const AppShellSkeleton = () => (
   <div className="min-h-screen bg-[#F8F9FA] overflow-hidden">
     {/* Header Skeleton */}
-    <div className="fixed top-6 left-0 right-0 z-40 flex justify-between items-center px-4 sm:px-6 lg:px-12">
-      <div className="hidden sm:block w-64 h-10 bg-white/80 rounded-2xl border border-slate-200/60 shadow-sm animate-pulse"></div>
-      <div className="w-full max-w-lg h-12 bg-white/90 rounded-full border border-slate-200/80 shadow-sm animate-pulse"></div>
-      <div className="w-32 h-10 bg-white/80 rounded-2xl border border-slate-200/60 shadow-sm animate-pulse"></div>
-    </div>
-    
-    {/* Sidebar Skeleton */}
-    <div className="fixed top-1/2 -translate-y-1/2 left-6 z-50">
-      <div className="w-14 h-96 bg-white/80 rounded-3xl border border-slate-200/60 shadow-sm animate-pulse"></div>
+    <div className="fixed top-3 sm:top-4 left-0 right-0 z-40 px-3 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto w-full h-12 bg-white/90 rounded-2xl border border-slate-200/80 shadow-xs animate-pulse flex items-center justify-between px-4">
+        <div className="w-48 h-6 bg-slate-200/60 rounded-lg"></div>
+        <div className="hidden lg:flex gap-2">
+          <div className="w-16 h-6 bg-slate-200/60 rounded-lg"></div>
+          <div className="w-16 h-6 bg-slate-200/60 rounded-lg"></div>
+          <div className="w-16 h-6 bg-slate-200/60 rounded-lg"></div>
+        </div>
+        <div className="w-40 h-6 bg-slate-200/60 rounded-lg"></div>
+      </div>
     </div>
 
     {/* Main Content Area Skeleton */}

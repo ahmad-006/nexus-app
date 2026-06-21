@@ -112,8 +112,8 @@ const DashboardLayout = () => {
         members={members}
       />
 
-      {/* Edge-to-Edge Canvas Area */}
-      <main className="relative w-full h-screen overflow-y-auto lg:pl-28 pt-28 pb-28 lg:pb-8 pr-4 pl-4 lg:pr-12">
+      {/* Main Canvas Area */}
+      <main className="relative w-full h-screen overflow-y-auto pt-20 pb-24 lg:pb-6 px-3 sm:px-6 lg:px-8">
         <div className="w-full h-full max-w-[1600px] mx-auto">
           <Outlet />
         </div>
