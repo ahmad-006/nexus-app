@@ -158,6 +158,10 @@ export const useDeleteMessage = (teamId, activeConversation) => {
       queryClient.setQueryData(cacheKey, (old = []) =>
         old.filter((m) => m._id !== deletedId)
       );
+      toast.success('Message deleted');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to delete message');
     },
   });
 };

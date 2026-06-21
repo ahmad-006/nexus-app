@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Outlet, Navigate, useNavigate } from 'react-router-dom';
+import { Outlet, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import FloatingDock from './Sidebar/FloatingDock';
 import CommandPill from './Header/CommandPill';
 import CommandPalette from './Header/CommandPalette';
@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 
 const DashboardLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated } = useAuthStore();
   const { activeTeamId } = useTeamStore();
   const { toggleCommandPalette, isCreateTicketOpen, closeCreateTicket } = useCommandStore();
@@ -59,6 +60,13 @@ const DashboardLayout = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [toggleCommandPalette, navigate]);
+
+  // Ensure active DM presence is cleared when navigating outside /messages
+  useEffect(() => {
+    if (location.pathname !== '/messages' && socket && socket.connected) {
+      socket.emit('leave_chat');
+    }
+  }, [location.pathname]);
 
   const handleCreateTicket = async (formData) => {
     if (!activeTeamId) {

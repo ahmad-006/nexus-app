@@ -193,7 +193,7 @@ export const deleteMessage = catchAsync(async (req, res, next) => {
   const { messageId } = req.params;
   const userId = req.user.id;
 
-  const message = await Message.findOneAndDelete({
+  const message = await Message.findOne({
     _id: messageId,
     senderId: userId,
   });
@@ -206,6 +206,18 @@ export const deleteMessage = catchAsync(async (req, res, next) => {
       ),
     );
   }
+
+  // Deletion rule: A direct message cannot be deleted once read
+  if (message.receiverId && message.isRead) {
+    return next(
+      new AppError(
+        "Cannot delete a message that has already been read",
+        403,
+      ),
+    );
+  }
+
+  await message.deleteOne();
 
   const io = socketManager.getIO();
   if (io) {

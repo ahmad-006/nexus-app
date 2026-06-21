@@ -5,6 +5,7 @@ import useAuthStore from '../../../store/authStore';
 import useChatStore from '../../../store/chatStore';
 import { useMyInvites } from '../../../hooks/useTeams';
 import ConfirmationModal from '../../ui/ConfirmationModal';
+import { socket } from '../../../api/socket';
 
 const NAV_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Workspace' },
@@ -18,7 +19,7 @@ const NAV_ITEMS = [
 const FloatingDock = () => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { logout } = useAuthStore();
-  const { unreadCounts } = useChatStore();
+  const { unreadCounts, setActiveConversation } = useChatStore();
   const { data: myInvites = [] } = useMyInvites();
   const pendingInvitesCount = myInvites.filter((inv) => inv.status === 'PENDING').length;
   const unreadMessagesCount = Object.values(unreadCounts).reduce(
@@ -37,6 +38,18 @@ const FloatingDock = () => {
             <NavLink
               key={item.to}
               to={item.to === '/settings' && pendingInvitesCount > 0 ? '/settings?tab=teams' : item.to}
+              onClick={() => {
+                if (item.to === '/messages') {
+                  setActiveConversation({
+                    type: 'TEAM',
+                    id: 'team',
+                    name: 'Team Group',
+                  });
+                  if (socket && socket.connected) {
+                    socket.emit('leave_chat');
+                  }
+                }
+              }}
               className={({ isActive }) =>
                 `relative flex items-center justify-center rounded-xl transition-colors w-10 h-10 p-2 ${
                   isActive 

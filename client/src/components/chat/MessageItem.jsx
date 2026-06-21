@@ -206,17 +206,19 @@ export default function MessageItem({
                       <Pencil className="w-3 h-3 text-slate-400" />
                       <span>Edit</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowMenu(false);
-                        onDelete(message._id);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3 h-3 text-rose-500" />
-                      <span>Delete</span>
-                    </button>
+                    {(!message.receiverId || !message.isRead) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowMenu(false);
+                          onDelete(message._id);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3 text-rose-500" />
+                        <span>Delete</span>
+                      </button>
+                    )}
                   </>
                 )}
               </div>

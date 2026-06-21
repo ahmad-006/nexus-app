@@ -77,10 +77,11 @@ export default function Messages() {
   const deleteMessageMutation = useDeleteMessage(activeTeamId, activeConversation);
   const markMessagesRead = useMarkMessagesRead(activeTeamId);
 
-  // Mark direct messages as read and signal active chat presence via WebSocket
+  // Synchronize active DM presence so messages sent by partner are only auto-read when actively viewing the DM
   useEffect(() => {
-    if (!isTeam && otherUserId) {
-      markMessagesRead(otherUserId);
+    const isDirectChatActive = !isTeam && !!otherUserId && !showMobileList;
+
+    if (isDirectChatActive) {
       if (socket && socket.connected) {
         socket.emit('enter_chat', { partnerId: otherUserId });
       }
@@ -94,8 +95,42 @@ export default function Messages() {
           socket.emit('leave_chat');
         }
       };
+    } else {
+      // In Team Group ("home messages") or conversation list - explicitly exit any DM presence
+      if (socket && socket.connected) {
+        socket.emit('leave_chat');
+      }
     }
-  }, [isTeam, otherUserId, markMessagesRead, messages.length]);
+  }, [isTeam, otherUserId, showMobileList]);
+
+  // Handle browser visibility change (e.g. background tab or minimized window)
+  useEffect(() => {
+    const handleVisibility = () => {
+      const isDirectChatActive = !isTeam && !!otherUserId && !showMobileList;
+      if (document.hidden) {
+        if (socket && socket.connected) {
+          socket.emit('leave_chat');
+        }
+      } else if (isDirectChatActive) {
+        if (socket && socket.connected) {
+          socket.emit('enter_chat', { partnerId: otherUserId });
+        }
+        markMessagesRead(otherUserId);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [isTeam, otherUserId, showMobileList, markMessagesRead]);
+
+  // Mark direct messages as read upon opening DM or when new messages arrive
+  useEffect(() => {
+    if (!isTeam && otherUserId && !showMobileList) {
+      markMessagesRead(otherUserId);
+    }
+  }, [isTeam, otherUserId, showMobileList, markMessagesRead, messages.length]);
 
   // Filter teammates (exclude current user)
   const filteredMembers = useMemo(() => {
@@ -286,7 +321,17 @@ export default function Messages() {
             {/* Mobile Back Button */}
             <button
               type="button"
-              onClick={() => setShowMobileList(true)}
+              onClick={() => {
+                setShowMobileList(true);
+                setActiveConversation({
+                  type: 'TEAM',
+                  id: 'team',
+                  name: `${teamName} Group`,
+                });
+                if (socket && socket.connected) {
+                  socket.emit('leave_chat');
+                }
+              }}
               className="md:hidden p-1.5 -ml-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               title="Back to conversations"
               aria-label="Back to conversations"

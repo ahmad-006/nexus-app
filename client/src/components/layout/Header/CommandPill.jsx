@@ -8,6 +8,7 @@ import useChatStore from '../../../store/chatStore';
 import useCommandStore from '../../../store/commandStore';
 import { useMyTeams, useMyInvites, useAcceptInviteById, useDeclineInviteById } from '../../../hooks/useTeams';
 import ProvisionWorkspaceModal from '../../team/ProvisionWorkspaceModal';
+import { socket } from '../../../api/socket';
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Workspace' },
@@ -23,7 +24,7 @@ const CommandPill = () => {
   const { teams: myTeams, activeTeam } = useMyTeams();
   const { setActiveTeam } = useTeamStore();
   const { openCommandPalette } = useCommandStore();
-  const { unreadCounts } = useChatStore();
+  const { unreadCounts, setActiveConversation } = useChatStore();
   const { data: myInvites = [] } = useMyInvites();
   const pendingInvites = myInvites.filter((inv) => inv.status === 'PENDING');
   const acceptInviteMutation = useAcceptInviteById();
@@ -207,6 +208,18 @@ const CommandPill = () => {
             <NavLink
               key={item.to}
               to={item.to === '/settings' && pendingInvites.length > 0 ? '/settings?tab=teams' : item.to}
+              onClick={() => {
+                if (item.to === '/messages') {
+                  setActiveConversation({
+                    type: 'TEAM',
+                    id: 'team',
+                    name: `${activeTeam?.name || 'Workspace'} Group`,
+                  });
+                  if (socket && socket.connected) {
+                    socket.emit('leave_chat');
+                  }
+                }
+              }}
               className={({ isActive }) =>
                 `relative px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 ${
                   isActive
