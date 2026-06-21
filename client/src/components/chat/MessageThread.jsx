@@ -9,33 +9,29 @@ function ConversationInception({ conversation }) {
   const user = conversation?.user || {};
 
   return (
-    <div className="px-6 pt-6 pb-4 mb-3 border-b border-slate-100 dark:border-slate-800 select-none">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-800 dark:text-slate-200 shadow-xs font-semibold text-base font-mono">
-          {isTeam ? (
-            <Users className="w-6 h-6 text-slate-700 dark:text-slate-300" />
-          ) : user.image ? (
-            <img
-              src={user.image}
-              alt={name}
-              className="w-12 h-12 rounded-2xl object-cover"
-            />
-          ) : (
-            name[0]?.toUpperCase() || 'U'
-          )}
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-            {name}
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-lg leading-relaxed flex items-center gap-1.5">
-            {!isTeam && <Lock className="w-3 h-3 text-slate-400 shrink-0" />}
-            {isTeam
-              ? `Workspace channel. All members of the active workspace can participate.`
-              : `Direct conversation with ${user.email || name}. Messages are private to participants.`}
-          </p>
-        </div>
+    <div className="mx-auto my-6 max-w-md text-center px-4 py-4 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 shadow-2xs select-none">
+      <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-800 dark:text-slate-200 shadow-2xs font-semibold text-base font-mono mb-2">
+        {isTeam ? (
+          <Users className="w-6 h-6 text-slate-700 dark:text-slate-300" />
+        ) : user.image ? (
+          <img
+            src={user.image}
+            alt={name}
+            className="w-12 h-12 rounded-full object-cover"
+          />
+        ) : (
+          name[0]?.toUpperCase() || 'U'
+        )}
       </div>
+      <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+        {name}
+      </h2>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed flex items-center justify-center gap-1.5">
+        {!isTeam && <Lock className="w-3 h-3 text-slate-400 shrink-0" />}
+        {isTeam
+          ? `Workspace channel. All members of the active workspace can participate.`
+          : `Direct conversation with ${user.email || name}. Messages are private to participants.`}
+      </p>
     </div>
   );
 }
@@ -60,6 +56,8 @@ export default function MessageThread({
   const containerRef = useRef(null);
   const bottomRef = useRef(null);
   const isAutoScrollRef = useRef(true);
+
+  const isTeam = conversation?.type === 'TEAM';
 
   // Auto-scroll logic: scroll down if user was already at or near bottom
   const handleScroll = () => {
@@ -123,16 +121,20 @@ export default function MessageThread({
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-slate-900 select-text"
+      className="flex-1 overflow-y-auto min-h-0 bg-[#efeae2]/30 dark:bg-slate-950/50 select-text"
+      style={{
+        backgroundImage: 'radial-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px)',
+        backgroundSize: '20px 20px',
+      }}
     >
       {isLoading ? (
         <div className="space-y-4 px-4 py-6">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex gap-3 animate-pulse">
-              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 shrink-0" />
+              <div className="w-8 h-8 rounded-full bg-slate-200/60 dark:bg-slate-800 shrink-0" />
               <div className="flex-1 space-y-2">
-                <div className="w-28 h-3 rounded-sm bg-slate-100 dark:bg-slate-800" />
-                <div className="w-3/4 h-3 rounded-sm bg-slate-100 dark:bg-slate-800" />
+                <div className="w-28 h-3 rounded-sm bg-slate-200/60 dark:bg-slate-800" />
+                <div className="w-3/4 h-3 rounded-sm bg-slate-200/60 dark:bg-slate-800" />
               </div>
             </div>
           ))}
@@ -151,12 +153,9 @@ export default function MessageThread({
                 return (
                   <div
                     key={item.id}
-                    className="relative my-4 flex items-center justify-center"
+                    className="relative my-3 flex items-center justify-center select-none sticky top-2 z-10"
                   >
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-slate-100 dark:border-slate-800" />
-                    </div>
-                    <span className="relative bg-white dark:bg-slate-900 px-3 text-[10px] font-mono text-slate-400 select-none">
+                    <span className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xs text-[10px] font-mono font-medium text-slate-500 dark:text-slate-400 px-3 py-1 rounded-lg shadow-2xs border border-slate-200/70 dark:border-slate-700/60 uppercase tracking-wider">
                       {item.label}
                     </span>
                   </div>
@@ -169,6 +168,7 @@ export default function MessageThread({
                   message={item.data}
                   currentUserId={currentUserId}
                   isGrouped={item.isGrouped}
+                  isTeam={isTeam}
                   onEdit={onEdit}
                   onDelete={onDelete}
                 />
@@ -178,8 +178,8 @@ export default function MessageThread({
 
           {/* Typing Indicator */}
           {typingUsers.length > 0 && (
-            <div className="px-4 py-2 flex items-center gap-2 text-[11px] font-mono text-slate-400 animate-pulse">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            <div className="px-6 py-2 flex items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
               <span>
                 {typingUsers.map((u) => u.userName).join(', ')}{' '}
                 {typingUsers.length === 1 ? 'is' : 'are'} typing...

@@ -87,6 +87,7 @@ export const useSendMessage = (teamId, activeConversation) => {
         receiverId: isTeam ? null : activeConversation.id,
         createdAt: new Date().toISOString(),
         isSending: true,
+        isRead: false,
       };
 
       // Optimistically append to cache
@@ -166,18 +167,32 @@ export const useDeleteMessage = (teamId, activeConversation) => {
  */
 export const useMarkMessagesRead = (teamId) => {
   const clearUnread = useChatStore((s) => s.clearUnread);
+  const queryClient = useQueryClient();
 
   return useCallback(
     async (senderId) => {
-      if (!senderId) return;
+      if (!senderId || !teamId) return;
       try {
         await api.patch(`/messages/read-all/${senderId}`);
         clearUnread(senderId);
-      } catch (err) {
+
+        // Synchronize local cache: mark received messages from sender as read
+        const cacheKey = messageKeys.direct(teamId, senderId);
+        queryClient.setQueryData(cacheKey, (old = []) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((m) => {
+            const sId = typeof m.senderId === 'object' ? m.senderId?._id : m.senderId;
+            if (String(sId) === String(senderId)) {
+              return { ...m, isRead: true };
+            }
+            return m;
+          });
+        });
+      } catch {
         // Silently fail background mark-read
       }
     },
-    [clearUnread]
+    [clearUnread, teamId, queryClient]
   );
 };
 
@@ -237,9 +252,34 @@ export const useChatSocket = (teamId) => {
       });
 
       if (senderIdStr !== currentUserId) {
-        if (window.location.pathname !== '/messages' || activeConversation?.type !== 'DM' || activeConversation?.id !== partnerId) {
+        const isLookingAtChat =
+          window.location.pathname === '/messages' &&
+          activeConversation?.type === 'DM' &&
+          String(activeConversation?.id) === String(partnerId);
+
+        if (isLookingAtChat) {
+          api.patch(`/messages/read-all/${partnerId}`).catch(() => {});
+        } else {
           incrementUnread(partnerId);
         }
+      }
+    };
+
+    const handleMessagesRead = (data) => {
+      // Reader has read messages sent by sender
+      if (String(data.senderId) === String(currentUserId)) {
+        const partnerId = data.readerId;
+        const cacheKey = messageKeys.direct(teamId, partnerId);
+        queryClient.setQueryData(cacheKey, (old = []) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((m) => {
+            const sId = typeof m.senderId === 'object' ? m.senderId?._id : m.senderId;
+            if (String(sId) === String(currentUserId)) {
+              return { ...m, isRead: true };
+            }
+            return m;
+          });
+        });
       }
     };
 
@@ -282,6 +322,7 @@ export const useChatSocket = (teamId) => {
 
     socket.on('receive_team_message', handleReceiveTeam);
     socket.on('receive_private_message', handleReceivePrivate);
+    socket.on('messages_read', handleMessagesRead);
     socket.on('message_updated', handleMessageUpdated);
     socket.on('message_deleted', handleMessageDeleted);
     socket.on('user_typing', handleUserTyping);
@@ -290,6 +331,7 @@ export const useChatSocket = (teamId) => {
     return () => {
       socket.off('receive_team_message', handleReceiveTeam);
       socket.off('receive_private_message', handleReceivePrivate);
+      socket.off('messages_read', handleMessagesRead);
       socket.off('message_updated', handleMessageUpdated);
       socket.off('message_deleted', handleMessageDeleted);
       socket.off('user_typing', handleUserTyping);
