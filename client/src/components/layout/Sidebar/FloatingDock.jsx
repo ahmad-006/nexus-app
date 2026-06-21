@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, CheckSquare, Users, BarChart3, MessageSquare, Settings, LogOut } from 'lucide-react';
-import nexusLogo from '../../../assets/nexus_logo.png';
 import nexusIcon from '../../../assets/nexus_icon.png';
 import useAuthStore from '../../../store/authStore';
 import useChatStore from '../../../store/chatStore';
 import { useMyInvites } from '../../../hooks/useTeams';
 import ConfirmationModal from '../../ui/ConfirmationModal';
+import Tooltip from '../../ui/Tooltip';
 
 const NAV_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Workspace' },
@@ -18,7 +18,6 @@ const NAV_ITEMS = [
 ];
 
 const FloatingDock = () => {
-  const [isHovered, setIsHovered] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { logout } = useAuthStore();
   const { unreadCounts } = useChatStore();
@@ -36,115 +35,75 @@ const FloatingDock = () => {
   return (
     <>
       <aside 
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className={`fixed z-50 flex bg-white/90 backdrop-blur-xl border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 ease-out overflow-hidden
-          
+        className="fixed z-50 flex bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.06)] select-none
           /* Mobile: Bottom Floating Bar */
           bottom-4 left-1/2 -translate-x-1/2 flex-row items-center px-4 py-3 rounded-full w-[90%] max-w-[400px] justify-between
-          
-          /* Desktop: Left Vertical Pill */
-          lg:left-6 lg:top-1/2 lg:-translate-y-1/2 lg:translate-x-0 lg:bottom-auto lg:flex-col lg:py-6 lg:rounded-[2rem] lg:justify-start
-          
-          ${isHovered ? 'lg:w-60 lg:px-4 lg:items-start' : 'lg:w-[72px] lg:px-0 lg:items-center'}`}
+          /* Desktop: Left Vertical Fixed Pill */
+          lg:left-6 lg:top-1/2 lg:-translate-y-1/2 lg:flex-col lg:py-6 lg:rounded-[2rem] lg:w-16 lg:items-center"
       >
-        {/* Logo (Hidden on mobile bottom bar) */}
-        <div className={`hidden lg:flex items-center gap-3 mb-8 transition-all duration-300 w-full ${isHovered ? 'px-2 justify-start' : 'justify-center'}`}>
+        {/* Logo Glyph (Desktop) */}
+        <div className="hidden lg:flex items-center justify-center mb-6 w-full">
           <img 
-            src={isHovered ? nexusLogo : nexusIcon} 
+            src={nexusIcon} 
             alt="Nexus" 
-            className={`transition-all duration-300 object-contain ${isHovered ? 'h-6' : 'h-7'}`}
+            className="h-7 w-7 object-contain"
           />
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex flex-row lg:flex-col gap-2 w-full justify-around lg:justify-start items-center lg:items-stretch">
+        <nav className="flex flex-row lg:flex-col gap-2 w-full justify-around lg:justify-start items-center">
           {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to === '/settings' && pendingInvitesCount > 0 ? '/settings?tab=teams' : item.to}
-              className={({ isActive }) =>
-                `relative flex items-center gap-4 rounded-xl transition-all duration-200 group
-                /* Mobile */
-                justify-center w-10 h-10 p-2.5 sm:p-3
-                /* Desktop */
-                ${isHovered ? 'lg:w-full lg:px-3 lg:py-3 lg:justify-start' : 'lg:w-12 lg:h-12 lg:mx-auto lg:p-0'}
-                ${isActive 
-                    ? 'bg-slate-100 text-slate-900 font-semibold' 
-                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {/* Active Indicator Dot (Only when collapsed on desktop) */}
-                  {!isHovered && isActive && (
-                    <span className="hidden lg:block absolute -left-1.5 w-1.5 h-1.5 rounded-full bg-slate-900 shadow-sm" />
-                  )}
-                  {/* Active Indicator Line (Mobile) */}
-                  {isActive && (
-                    <span className="lg:hidden absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-1 rounded-full bg-slate-900" />
-                  )}
-                  
+            <Tooltip key={item.to} content={item.label} position="right">
+              <NavLink
+                to={item.to === '/settings' && pendingInvitesCount > 0 ? '/settings?tab=teams' : item.to}
+                className={({ isActive }) =>
+                  `relative flex items-center justify-center rounded-xl transition-colors
+                  /* Mobile */
+                  w-10 h-10 p-2.5
+                  /* Desktop */
+                  lg:w-11 lg:h-11
+                  ${isActive 
+                      ? 'bg-slate-900 text-white font-semibold shadow-xs' 
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80'
+                  }`
+                }
+              >
+                {({ isActive }) => (
                   <div className="relative shrink-0 flex items-center justify-center">
                     <item.icon 
-                      className={`w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 shrink-0 transition-colors ${isActive ? 'text-slate-900' : ''}`} 
+                      className={`w-5 h-5 shrink-0 transition-colors ${isActive ? 'text-white' : ''}`} 
                       strokeWidth={2}
                     />
                     {item.to === '/settings' && pendingInvitesCount > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 bg-slate-900 text-white text-[9px] font-mono font-bold rounded flex items-center justify-center ring-1 ring-white shadow-xs">
+                      <span className="absolute -top-1.5 -right-1.5 min-w-3.5 h-3.5 px-1 bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[9px] font-mono font-bold rounded flex items-center justify-center ring-1 ring-white shadow-xs">
                         {pendingInvitesCount}
                       </span>
                     )}
                     {item.to === '/messages' && unreadMessagesCount > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 bg-slate-900 text-white text-[9px] font-mono font-bold rounded flex items-center justify-center ring-1 ring-white shadow-xs">
+                      <span className="absolute -top-1.5 -right-1.5 min-w-3.5 h-3.5 px-1 bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[9px] font-mono font-bold rounded flex items-center justify-center ring-1 ring-white shadow-xs">
                         {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
                       </span>
                     )}
                   </div>
-                  {isHovered && (
-                    <div className="hidden lg:flex items-center justify-between flex-1 min-w-0 pr-1 animate-in fade-in duration-300">
-                      <span className="tracking-wide text-sm whitespace-nowrap">
-                        {item.label}
-                      </span>
-                      {item.to === '/settings' && pendingInvitesCount > 0 && (
-                        <span className="text-[11px] font-mono font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 tabular-nums">
-                          {pendingInvitesCount}
-                        </span>
-                      )}
-                      {item.to === '/messages' && unreadMessagesCount > 0 && (
-                        <span className="text-[11px] font-mono font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 tabular-nums">
-                          {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </NavLink>
+                )}
+              </NavLink>
+            </Tooltip>
           ))}
           
-          {/* Divider for desktop */}
-          <div className="hidden lg:block h-px bg-slate-200 my-4 mx-auto transition-all duration-300 opacity-50" style={{ width: isHovered ? '100%' : '2rem' }}></div>
+          {/* Subtle Divider for Desktop */}
+          <div className="hidden lg:block h-px bg-slate-200 my-2 w-7 opacity-70"></div>
           
-          {/* Logout Button directly in dock */}
-          <button
-            onClick={() => setIsLogoutModalOpen(true)}
-            className={`relative flex items-center gap-4 rounded-xl transition-all duration-200 group text-red-500 hover:text-red-700 hover:bg-red-50
-              /* Mobile */
-              justify-center w-10 h-10 p-2.5 sm:p-3
-              /* Desktop */
-              ${isHovered ? 'lg:w-full lg:px-3 lg:py-3 lg:justify-start' : 'lg:w-12 lg:h-12 lg:mx-auto lg:p-0'}
-            `}
-            title="Logout"
-          >
-            <LogOut className="w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 shrink-0" strokeWidth={2} />
-            {isHovered && (
-              <span className="hidden lg:block tracking-wide text-sm whitespace-nowrap animate-in fade-in duration-300">
-                Sign out
-              </span>
-            )}
-          </button>
+          {/* Logout Button */}
+          <Tooltip content="Sign out" position="right">
+            <button
+              onClick={() => setIsLogoutModalOpen(true)}
+              className="relative flex items-center justify-center rounded-xl transition-colors text-slate-400 hover:text-rose-600 hover:bg-rose-50 w-10 h-10 lg:w-11 lg:h-11 cursor-pointer"
+              title="Logout"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-5 h-5 shrink-0" strokeWidth={2} />
+            </button>
+          </Tooltip>
         </nav>
       </aside>
 
