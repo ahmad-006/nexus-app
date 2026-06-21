@@ -172,22 +172,31 @@ export const useMarkMessagesRead = (teamId) => {
   return useCallback(
     async (senderId) => {
       if (!senderId || !teamId) return;
+
+      // 1. Immediately clear unread badge in Zustand store
+      clearUnread(senderId);
+
+      // 2. Synchronously mark all messages from this sender as read in React Query cache
+      const cacheKey = messageKeys.direct(teamId, senderId);
+      queryClient.setQueryData(cacheKey, (old = []) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((m) => {
+          const sId = typeof m.senderId === 'object' ? m.senderId?._id : m.senderId;
+          if (String(sId) === String(senderId)) {
+            return { ...m, isRead: true };
+          }
+          return m;
+        });
+      });
+
+      // 3. Emit immediate WebSocket notification to sender (0ms latency)
+      if (socket && socket.connected) {
+        socket.emit('mark_messages_read', { senderId, teamId });
+      }
+
+      // 4. Background DB update fallback
       try {
         await api.patch(`/messages/read-all/${senderId}`);
-        clearUnread(senderId);
-
-        // Synchronize local cache: mark received messages from sender as read
-        const cacheKey = messageKeys.direct(teamId, senderId);
-        queryClient.setQueryData(cacheKey, (old = []) => {
-          if (!Array.isArray(old)) return old;
-          return old.map((m) => {
-            const sId = typeof m.senderId === 'object' ? m.senderId?._id : m.senderId;
-            if (String(sId) === String(senderId)) {
-              return { ...m, isRead: true };
-            }
-            return m;
-          });
-        });
       } catch {
         // Silently fail background mark-read
       }
@@ -258,6 +267,9 @@ export const useChatSocket = (teamId) => {
           String(activeConversation?.id) === String(partnerId);
 
         if (isLookingAtChat) {
+          if (socket && socket.connected) {
+            socket.emit('mark_messages_read', { senderId: partnerId, teamId });
+          }
           api.patch(`/messages/read-all/${partnerId}`).catch(() => {});
         } else {
           incrementUnread(partnerId);

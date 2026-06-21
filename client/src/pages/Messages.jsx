@@ -19,6 +19,7 @@ import {
 import MessageThread from '../components/chat/MessageThread';
 import MessageInput from '../components/chat/MessageInput';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { socket } from '../api/socket';
 
 export default function Messages() {
   const { user } = useAuthStore();
@@ -76,10 +77,23 @@ export default function Messages() {
   const deleteMessageMutation = useDeleteMessage(activeTeamId, activeConversation);
   const markMessagesRead = useMarkMessagesRead(activeTeamId);
 
-  // Mark direct messages as read when opening conversation
+  // Mark direct messages as read and signal active chat presence via WebSocket
   useEffect(() => {
     if (!isTeam && otherUserId) {
       markMessagesRead(otherUserId);
+      if (socket && socket.connected) {
+        socket.emit('enter_chat', { partnerId: otherUserId });
+      }
+      const handleReconnect = () => {
+        socket.emit('enter_chat', { partnerId: otherUserId });
+      };
+      socket.on('connect', handleReconnect);
+      return () => {
+        socket.off('connect', handleReconnect);
+        if (socket && socket.connected) {
+          socket.emit('leave_chat');
+        }
+      };
     }
   }, [isTeam, otherUserId, markMessagesRead, messages.length]);
 

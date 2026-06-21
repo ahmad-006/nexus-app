@@ -105,18 +105,18 @@ export const readAllMessages = catchAsync(async (req, res) => {
   const { senderId } = req.params;
   const { id: receiverId } = req.user;
 
+  const io = socketManager.getIO();
+  if (io) {
+    io.to(`user_${senderId}`).emit("messages_read", {
+      readerId: receiverId.toString(),
+      senderId: senderId.toString(),
+    });
+  }
+
   await Message.updateMany(
     { senderId, receiverId, isRead: false },
     { $set: { isRead: true } },
   );
-
-  const io = socketManager.getIO();
-  if (io) {
-    io.to(`user_${senderId}`).emit("messages_read", {
-      readerId: receiverId,
-      senderId: senderId,
-    });
-  }
 
   res.status(200).json({
     status: "success",

@@ -143,6 +143,51 @@ export const socketManager = {
       });
 
       /**
+       * @event enter_chat
+       * @param {Object} data - { partnerId }
+       */
+      socket.on("enter_chat", (data) => {
+        const { partnerId } = data || {};
+        if (partnerId) {
+          socket.activeChatPartnerId = partnerId.toString();
+        }
+      });
+
+      /**
+       * @event leave_chat
+       */
+      socket.on("leave_chat", () => {
+        socket.activeChatPartnerId = null;
+      });
+
+      /**
+       * @event mark_messages_read
+       * @param {Object} data - { senderId, teamId }
+       */
+      socket.on("mark_messages_read", async (data) => {
+        const { senderId } = data || {};
+        if (!senderId) return;
+
+        const readerId = socket.user._id.toString();
+
+        // 1. Instantly broadcast over socket without waiting for DB disk latency
+        io.to(`user_${senderId}`).emit("messages_read", {
+          readerId,
+          senderId: senderId.toString(),
+        });
+
+        // 2. Persist in database asynchronously
+        try {
+          await Message.updateMany(
+            { senderId, receiverId: readerId, isRead: false },
+            { $set: { isRead: true } }
+          );
+        } catch (err) {
+          console.error("Error in mark_messages_read DB update:", err);
+        }
+      });
+
+      /**
        * @event send_private_message
        * @param {Object} data - { receiverId, message, teamId, tempId }
        */
@@ -150,16 +195,34 @@ export const socketManager = {
         const { receiverId, message, teamId, tempId } = data || {};
         if (!receiverId || !message || !teamId) return;
 
-        // 1. Persistence (Save to Database with team context)
+        // Check if receiver is currently viewing this exact chat
+        let isImmediatelyRead = false;
+        const receiverRoom = `user_${receiverId}`;
+        const receiverSocketIds = io.sockets.adapter.rooms.get(receiverRoom);
+
+        if (receiverSocketIds && receiverSocketIds.size > 0) {
+          for (const socketId of receiverSocketIds) {
+            const receiverSocket = io.sockets.sockets.get(socketId);
+            if (
+              receiverSocket &&
+              receiverSocket.activeChatPartnerId === socket.user._id.toString()
+            ) {
+              isImmediatelyRead = true;
+              break;
+            }
+          }
+        }
+
+        // 1. Persistence (Save to Database with team context and immediate read state)
         const savedMessage = await Message.create({
           senderId: socket.user._id,
           receiverId,
           message,
           teamId,
+          isRead: isImmediatelyRead,
         });
 
         // 2. Identify Rooms (Target both for multi-device sync)
-        const receiverRoom = `user_${receiverId}`;
         const senderRoom = `user_${socket.user._id}`;
 
         const payload = {
@@ -177,14 +240,14 @@ export const socketManager = {
           timestamp: savedMessage.createdAt,
           teamId,
           tempId: tempId || null,
-          isRead: false,
+          isRead: isImmediatelyRead,
         };
 
         // 3. Emit Full Payload to Both
         io.to(receiverRoom).to(senderRoom).emit("receive_private_message", payload);
 
         console.log(
-          `Private: ${socket.user.name} -> User(${receiverId}): ${message}`,
+          `Private: ${socket.user.name} -> User(${receiverId}): ${message} (read=${isImmediatelyRead})`,
         );
       });
 
