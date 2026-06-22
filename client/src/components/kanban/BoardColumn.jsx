@@ -10,7 +10,7 @@ const STATUS_CONFIG = {
   'DONE': { label: 'Completed', dot: 'bg-emerald-500' }
 };
 
-const BoardColumn = ({ status, tickets, onOpenCreateModal, isDragging }) => {
+const BoardColumn = ({ status, tickets, onOpenCreateModal, isDragging, isFiltered = false }) => {
   const config = STATUS_CONFIG[status] || { label: status, dot: 'bg-slate-400' };
   const columnRef = useRef(null);
   const scrollRef = useRef(null);
@@ -123,14 +123,17 @@ const BoardColumn = ({ status, tickets, onOpenCreateModal, isDragging }) => {
                   {status === 'DONE' && <div className="w-5 h-5 border-2 border-emerald-300 rounded-sm bg-emerald-100" />}
                 </div>
                 <h4 className="text-sm font-semibold text-slate-700 mb-1">
-                  {status === 'TODO' && 'No tasks yet'}
-                  {status === 'IN_PROGRESS' && 'Nothing in progress'}
-                  {status === 'DONE' && 'No completed tasks'}
+                  {isFiltered ? 'No matching tasks' : (
+                    status === 'TODO' ? 'No tasks yet' :
+                    status === 'IN_PROGRESS' ? 'Nothing in progress' : 'No completed tasks'
+                  )}
                 </h4>
                 <p className="text-[11px] text-slate-400 font-medium leading-relaxed max-w-[200px]">
-                  {status === 'TODO' && 'Click the Add Task button below to create your first ticket.'}
-                  {status === 'IN_PROGRESS' && 'Drag a ticket here from the To Do column when you are ready to start working.'}
-                  {status === 'DONE' && 'Drag a ticket here once you have completely finished it.'}
+                  {isFiltered ? 'No tickets in this column match your current search or filter criteria.' : (
+                    status === 'TODO' ? 'Click the Add Task button below to create your first ticket.' :
+                    status === 'IN_PROGRESS' ? 'Drag a ticket here from the To Do column when you are ready to start working.' :
+                    'Drag a ticket here once you have completely finished it.'
+                  )}
                 </p>
               </div>
             )}
@@ -145,7 +148,8 @@ BoardColumn.propTypes = {
   status: PropTypes.string.isRequired,
   tickets: PropTypes.array.isRequired,
   onOpenCreateModal: PropTypes.func,
-  isDragging: PropTypes.bool
+  isDragging: PropTypes.bool,
+  isFiltered: PropTypes.bool,
 };
 
 export default BoardColumn;
