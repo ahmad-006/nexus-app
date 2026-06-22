@@ -169,7 +169,7 @@ export default function Messages() {
     ).length;
   }, [members, onlineUserIds]);
 
-  // Filter teammates (exclude current user)
+  // Filter and sort teammates (most recently active conversations on top)
   const filteredMembers = useMemo(() => {
     const curIdStr = String(currentUserId || '');
     return members
@@ -191,8 +191,28 @@ export default function Messages() {
           return (unreadCounts[mId] || 0) > 0;
         }
         return true;
+      })
+      .sort((a, b) => {
+        const aId = String(a.userId?._id || a.userId || '');
+        const bId = String(b.userId?._id || b.userId || '');
+        const aTime = conversationSummaries[aId]?.lastMessageTime
+          ? new Date(conversationSummaries[aId].lastMessageTime).getTime()
+          : 0;
+        const bTime = conversationSummaries[bId]?.lastMessageTime
+          ? new Date(conversationSummaries[bId].lastMessageTime).getTime()
+          : 0;
+
+        // Recent conversations first
+        if (bTime !== aTime) {
+          return bTime - aTime;
+        }
+
+        // Fallback: alphabetical by name
+        const aName = a.userId?.name || a.email || '';
+        const bName = b.userId?.name || b.email || '';
+        return aName.localeCompare(bName);
       });
-  }, [members, memberSearch, currentUserId, filterTab, unreadCounts]);
+  }, [members, memberSearch, currentUserId, filterTab, unreadCounts, conversationSummaries]);
 
   // Typing list for active chat
   const activeTypingList = useMemo(() => {
