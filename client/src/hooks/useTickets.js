@@ -287,6 +287,12 @@ export const useUpdateTicket = (ticketId, teamId) => {
         });
         return res.data.data.ticket;
       }
+      if ('assigneeId' in updateData) {
+        const res = await axiosInstance.patch(`/tickets/${ticketId}/assign`, {
+          assigneeId: updateData.assigneeId || null,
+        });
+        return res.data.data.ticket;
+      }
       const res = await axiosInstance.patch(`/tickets/${ticketId}`, updateData);
       return res.data.data.ticket;
     },
@@ -328,11 +334,82 @@ export const useUpdateTicket = (ticketId, teamId) => {
       }
       toast.error(err.response?.data?.message || 'Failed to update ticket');
     },
-    onSuccess: () => {
+    onSuccess: (updatedTicket) => {
+      if (updatedTicket) {
+        queryClient.setQueryData(ticketKeys.detail(ticketId), (old) => ({
+          ...old,
+          ...updatedTicket,
+        }));
+      }
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticketId) });
       if (teamId) {
+        queryClient.invalidateQueries({ queryKey: ticketKeys.list(teamId) });
         queryClient.invalidateQueries({ queryKey: ticketKeys.stats(teamId) });
       }
       toast.success('Ticket updated');
+    },
+  });
+};
+
+/**
+ * Mutation to assign or unassign a ticket.
+ */
+export const useAssignTicket = (ticketId, teamId) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (assigneeId) => {
+      const res = await axiosInstance.patch(`/tickets/${ticketId}/assign`, {
+        assigneeId: assigneeId || null,
+      });
+      return res.data.data.ticket;
+    },
+    onMutate: async (assigneeId) => {
+      await queryClient.cancelQueries({ queryKey: ticketKeys.detail(ticketId) });
+      if (teamId) {
+        await queryClient.cancelQueries({ queryKey: ticketKeys.list(teamId) });
+      }
+
+      const prevTicket = queryClient.getQueryData(ticketKeys.detail(ticketId));
+      const prevTickets = teamId ? queryClient.getQueryData(ticketKeys.list(teamId)) : undefined;
+
+      queryClient.setQueryData(ticketKeys.detail(ticketId), (old) => {
+        if (!old) return old;
+        return { ...old, assigneeId: assigneeId || null };
+      });
+
+      if (teamId) {
+        queryClient.setQueryData(ticketKeys.list(teamId), (oldTickets = []) =>
+          oldTickets.map((t) =>
+            t._id === ticketId ? { ...t, assigneeId: assigneeId || null } : t
+          )
+        );
+      }
+
+      return { prevTicket, prevTickets };
+    },
+    onError: (err, assigneeId, context) => {
+      if (context?.prevTicket) {
+        queryClient.setQueryData(ticketKeys.detail(ticketId), context.prevTicket);
+      }
+      if (context?.prevTickets && teamId) {
+        queryClient.setQueryData(ticketKeys.list(teamId), context.prevTickets);
+      }
+      toast.error(err.response?.data?.message || 'Failed to assign ticket');
+    },
+    onSuccess: (updatedTicket) => {
+      if (updatedTicket) {
+        queryClient.setQueryData(ticketKeys.detail(ticketId), (old) => ({
+          ...old,
+          ...updatedTicket,
+        }));
+      }
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticketId) });
+      if (teamId) {
+        queryClient.invalidateQueries({ queryKey: ticketKeys.list(teamId) });
+        queryClient.invalidateQueries({ queryKey: ticketKeys.stats(teamId) });
+      }
+      toast.success('Assignee updated');
     },
   });
 };

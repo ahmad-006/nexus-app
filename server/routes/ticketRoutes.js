@@ -85,8 +85,8 @@ ticketRouter
   .patch(
     protect,
     isMember,
-    restrictTo('admin'),
-    [ticketValidation.createAssignee],
+    isAdminOrReporter,
+    [ticketValidation.optionalAssignee],
     validate,
     assignToUser,
   );

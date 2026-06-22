@@ -171,7 +171,7 @@ const patchTicket = catchAsync(async (req, res, next) => {
   if (title) updatedData.title = title;
   if (description) updatedData.description = description;
   if (priority) updatedData.priority = priority;
-  if (dueDate) updatedData.dueDate = dueDate;
+  if (dueDate !== undefined) updatedData.dueDate = dueDate ? new Date(dueDate) : null;
 
   //throwing update if no field is changed
   if (Object.keys(updatedData).length === 0) {
@@ -201,7 +201,7 @@ const patchTicket = catchAsync(async (req, res, next) => {
   }
 
   // 2. Log Title, Description or Due Date changes under a general update
-  if (title || description || dueDate) {
+  if (title || description || dueDate !== undefined) {
     logActivity({
       userId: req.user.id,
       action: "TICKET_UPDATED",
@@ -212,7 +212,7 @@ const patchTicket = catchAsync(async (req, res, next) => {
         titleChanged: !!title && oldTicket.title !== updatedTicket.title,
         descriptionChanged:
           !!description && oldTicket.description !== updatedTicket.description,
-        dueDateChanged: !!dueDate && oldTicket.dueDate !== updatedTicket.dueDate,
+        dueDateChanged: dueDate !== undefined && oldTicket.dueDate?.toString() !== updatedTicket.dueDate?.toString(),
       },
     });
   }
