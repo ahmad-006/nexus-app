@@ -273,6 +273,51 @@ export const usePromoteMember = (teamId) => {
 };
 
 /**
+ * Mutation to demote an admin back to regular member.
+ */
+export const useDemoteMember = (teamId) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (userId) => {
+      const response = await axiosInstance.patch(`/teams/${teamId}/members/${userId}/demote`);
+      return response.data.data.updatedTeam;
+    },
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({ queryKey: teamKeys.detail(teamId) });
+      const previousTeam = queryClient.getQueryData(teamKeys.detail(teamId));
+
+      if (previousTeam) {
+        queryClient.setQueryData(teamKeys.detail(teamId), {
+          ...previousTeam,
+          members: previousTeam.members.map((m) =>
+            (m.userId?._id || m.userId)?.toString() === userId?.toString()
+              ? { ...m, role: 'member' }
+              : m
+          ),
+        });
+      }
+      return { previousTeam };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousTeam) {
+        queryClient.setQueryData(teamKeys.detail(teamId), context.previousTeam);
+      }
+      toast.error(err.response?.data?.message || 'Failed to demote member');
+    },
+    onSuccess: (updatedTeam) => {
+      if (updatedTeam) {
+        queryClient.setQueryData(teamKeys.detail(teamId), updatedTeam);
+      }
+      queryClient.invalidateQueries({ queryKey: teamKeys.detail(teamId) });
+      queryClient.invalidateQueries({ queryKey: teamKeys.activities(teamId) });
+      queryClient.invalidateQueries({ queryKey: teamKeys.lists() });
+      toast.success('Admin demoted to Member');
+    },
+  });
+};
+
+/**
  * Mutation to remove a member from the team.
  */
 export const useRemoveMember = (teamId) => {

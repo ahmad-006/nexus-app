@@ -169,6 +169,62 @@ export const patchPromoteToAdmin = catchAsync(async (req, res, next) => {
 });
 
 /**
+ * @desc    Demote an admin back to regular member (Owner only)
+ * @route   PATCH /api/teams/:teamId/members/:userId/demote
+ * @access  Private (Owner only)
+ */
+export const patchDemoteToMember = catchAsync(async (req, res, next) => {
+  const { teamId, userId } = req.params;
+
+  if (!userId || !teamId)
+    return next(new AppError('userId and teamId required', 400));
+
+  const team = await Team.findById(teamId);
+  if (!team) return next(new AppError('Team Not Found', 404));
+
+  if (team.ownerId.toString() !== req.user.id.toString()) {
+    return next(new AppError('Only the workspace owner can demote admins', 403));
+  }
+
+  const targetMember = team.members.find(
+    (member) =>
+      member.userId?.toString() === userId.toString() ||
+      member._id?.toString() === userId.toString()
+  );
+  if (!targetMember) return next(new AppError('User is not of this team', 400));
+
+  const targetUserIdStr = (targetMember.userId?._id || targetMember.userId)?.toString();
+  if (team.ownerId.toString() === targetUserIdStr) {
+    return next(new AppError('The workspace owner cannot be demoted', 400));
+  }
+
+  if (targetMember.role !== 'admin') {
+    return next(new AppError('User is not an admin', 400));
+  }
+
+  targetMember.role = 'member';
+  await team.save();
+
+  await team.populate('members.userId', 'name email image');
+
+  logActivity({
+    userId: req.user.id,
+    action: 'MEMBER_DEMOTED',
+    resourceType: 'Team',
+    resourceId: teamId,
+    teamId,
+    details: { demotedUserId: targetMember.userId },
+  });
+
+  return res.status(200).json({
+    status: 'success',
+    data: {
+      updatedTeam: team,
+    },
+  });
+});
+
+/**
  * @desc    Add a new member to a team
  * @route   POST /api/teams/:teamId/members
  * @access  Private (admin)

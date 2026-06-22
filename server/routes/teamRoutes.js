@@ -3,6 +3,7 @@ import {
   deleteMember,
   patchAcceptInvite,
   patchPromoteToAdmin,
+  patchDemoteToMember,
   postAddMember,
   postCreateTeam,
   deleteTeam,
@@ -49,6 +50,16 @@ teamsRouter
     [teamValidation.userId, teamValidation.teamId],
     validate,
     deleteMember,
+  );
+
+teamsRouter
+  .route("/:teamId/members/:userId/demote")
+  .patch(
+    isMember,
+    restrictTo("admin"),
+    [teamValidation.userId, teamValidation.teamId],
+    validate,
+    patchDemoteToMember,
   );
 
 teamsRouter

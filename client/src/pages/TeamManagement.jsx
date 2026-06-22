@@ -22,6 +22,7 @@ import {
   useMyTeams,
   useTeamDetails,
   usePromoteMember,
+  useDemoteMember,
   useRemoveMember,
   useTeamActivities
 } from '../hooks/useTeams';
@@ -40,6 +41,7 @@ const TeamManagement = () => {
   const { data: activities = [], isLoading: isLoadingActivities } = useTeamActivities(activeTeamId);
 
   const promoteMutation = usePromoteMember(activeTeamId);
+  const demoteMutation = useDemoteMember(activeTeamId);
   const removeMutation = useRemoveMember(activeTeamId);
 
   // UI States
@@ -101,6 +103,14 @@ const TeamManagement = () => {
   const handlePromote = async (userId) => {
     try {
       await promoteMutation.mutateAsync(userId);
+    } catch (err) {
+      // Error handled in hook
+    }
+  };
+
+  const handleDemote = async (userId) => {
+    try {
+      await demoteMutation.mutateAsync(userId);
     } catch (err) {
       // Error handled in hook
     }
@@ -368,7 +378,7 @@ const TeamManagement = () => {
                         <td className="py-4 px-5 text-right">
                           {isCurrentUserAdmin && !isMemberOwner && !isCurrentOperative && (
                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {!isMemberAdmin && (
+                              {!isMemberAdmin ? (
                                 <button
                                   onClick={() => handlePromote(memberId)}
                                   disabled={promoteMutation.isPending}
@@ -377,7 +387,16 @@ const TeamManagement = () => {
                                 >
                                   Make Admin
                                 </button>
-                              )}
+                              ) : isOwner ? (
+                                <button
+                                  onClick={() => handleDemote(memberId)}
+                                  disabled={demoteMutation.isPending}
+                                  className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                                  title="Demote to Workspace Member"
+                                >
+                                  Remove Admin
+                                </button>
+                              ) : null}
                               <button
                                 onClick={() => setMemberToRemove(member)}
                                 className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
