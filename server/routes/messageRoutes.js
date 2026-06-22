@@ -7,6 +7,7 @@ import {
   deleteMessage,
   getMessagesByTeam,
   getUnreadCounts,
+  getConversationSummaries,
 } from "../controllers/messageController.js";
 import { isMember } from "../middleware/role-check.js";
 
@@ -16,6 +17,7 @@ messageRouter.use(protect);
 
 messageRouter.get("/:teamId/group", isMember, getMessagesByTeam);
 messageRouter.get("/:teamId/unread", isMember, getUnreadCounts);
+messageRouter.get("/:teamId/conversations", isMember, getConversationSummaries);
 messageRouter.get("/:teamId/:otherUserId", isMember, getMessagesByUsers);
 messageRouter.patch("/read-all/:senderId", readAllMessages);
 messageRouter.patch("/:messageId", updateMessage);

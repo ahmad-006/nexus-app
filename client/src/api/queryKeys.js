@@ -48,5 +48,6 @@ export const messageKeys = {
   team: (teamId) => [...messageKeys.all, 'team', teamId],
   direct: (teamId, otherUserId) => [...messageKeys.all, 'direct', teamId, otherUserId],
   unread: (teamId) => [...messageKeys.all, 'unread', teamId],
+  conversations: (teamId) => [...messageKeys.all, 'conversations', teamId],
 };
 

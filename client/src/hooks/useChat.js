@@ -56,6 +56,21 @@ export const useUnreadMessageCounts = (teamId) => {
 };
 
 /**
+ * Fetch latest message summaries for all conversations in active workspace
+ */
+export const useConversationSummaries = (teamId) => {
+  return useQuery({
+    queryKey: messageKeys.conversations(teamId),
+    queryFn: async () => {
+      const res = await api.get(`/messages/${teamId}/conversations`);
+      return res.data?.data?.conversations || {};
+    },
+    enabled: !!teamId,
+    staleTime: 1000 * 30,
+  });
+};
+
+/**
  * Send message hook with optimistic updates and socket dispatch
  */
 export const useSendMessage = (teamId, activeConversation) => {
@@ -90,8 +105,19 @@ export const useSendMessage = (teamId, activeConversation) => {
         isRead: false,
       };
 
-      // Optimistically append to cache
+      // Optimistically append to message thread cache
       queryClient.setQueryData(cacheKey, (old = []) => [...old, optimisticMessage]);
+
+      // Optimistically update conversation summaries snippet
+      queryClient.setQueryData(messageKeys.conversations(teamId), (old = {}) => ({
+        ...old,
+        [isTeam ? 'team' : activeConversation.id]: {
+          lastMessage: trimmed,
+          lastMessageSenderId: user?._id || user?.id,
+          lastMessageTime: new Date().toISOString(),
+          isRead: false,
+        },
+      }));
 
       if (isTeam) {
         socket.emit('send_team_message', {
@@ -220,6 +246,8 @@ export const useChatSocket = (teamId) => {
     incrementUnread,
     addTypingUser,
     removeTypingUser,
+    setOnlineUsers,
+    setUserPresence,
   } = useChatStore();
 
   const currentUserId = user?._id || user?.id;
@@ -242,6 +270,17 @@ export const useChatSocket = (teamId) => {
       });
 
       const senderIdStr = typeof data.senderId === 'object' ? data.senderId?._id : data.senderId;
+
+      // Real-time update to conversation summaries cache
+      queryClient.setQueryData(messageKeys.conversations(teamId), (old = {}) => ({
+        ...old,
+        team: {
+          lastMessage: data.message,
+          lastMessageSenderId: senderIdStr,
+          lastMessageTime: data.createdAt || data.timestamp,
+        },
+      }));
+
       if (senderIdStr !== currentUserId) {
         if (window.location.pathname !== '/messages' || activeConversation?.type !== 'TEAM') {
           incrementUnread('team');
@@ -263,6 +302,17 @@ export const useChatSocket = (teamId) => {
         if (old.some((m) => m._id === data._id)) return old;
         return [...old, data];
       });
+
+      // Real-time update to conversation summaries cache
+      queryClient.setQueryData(messageKeys.conversations(teamId), (old = {}) => ({
+        ...old,
+        [partnerId]: {
+          lastMessage: data.message,
+          lastMessageSenderId: senderIdStr,
+          lastMessageTime: data.createdAt || data.timestamp,
+          isRead: data.isRead,
+        },
+      }));
 
       if (senderIdStr !== currentUserId) {
         const isLookingAtChat =
@@ -336,6 +386,27 @@ export const useChatSocket = (teamId) => {
       removeTypingUser(data.conversationId, data.userId);
     };
 
+    const handleOnlineUsersList = (data) => {
+      if (data?.onlineUserIds) {
+        setOnlineUsers(data.onlineUserIds);
+      }
+    };
+
+    const handleUserPresenceChanged = (data) => {
+      if (data?.userId && data?.status) {
+        setUserPresence(data.userId, data.status, data.lastSeen);
+      }
+    };
+
+    // Query active presence immediately and on reconnect
+    if (socket.connected) {
+      socket.emit('get_online_users');
+    }
+    const handleReconnect = () => {
+      socket.emit('get_online_users');
+    };
+    socket.on('connect', handleReconnect);
+
     socket.on('receive_team_message', handleReceiveTeam);
     socket.on('receive_private_message', handleReceivePrivate);
     socket.on('messages_read', handleMessagesRead);
@@ -343,8 +414,11 @@ export const useChatSocket = (teamId) => {
     socket.on('message_deleted', handleMessageDeleted);
     socket.on('user_typing', handleUserTyping);
     socket.on('user_stop_typing', handleUserStopTyping);
+    socket.on('online_users_list', handleOnlineUsersList);
+    socket.on('user_presence_changed', handleUserPresenceChanged);
 
     return () => {
+      socket.off('connect', handleReconnect);
       socket.off('receive_team_message', handleReceiveTeam);
       socket.off('receive_private_message', handleReceivePrivate);
       socket.off('messages_read', handleMessagesRead);
@@ -352,6 +426,8 @@ export const useChatSocket = (teamId) => {
       socket.off('message_deleted', handleMessageDeleted);
       socket.off('user_typing', handleUserTyping);
       socket.off('user_stop_typing', handleUserStopTyping);
+      socket.off('online_users_list', handleOnlineUsersList);
+      socket.off('user_presence_changed', handleUserPresenceChanged);
     };
   }, [
     teamId,
@@ -361,5 +437,7 @@ export const useChatSocket = (teamId) => {
     incrementUnread,
     addTypingUser,
     removeTypingUser,
+    setOnlineUsers,
+    setUserPresence,
   ]);
 };

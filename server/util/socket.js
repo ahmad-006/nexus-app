@@ -7,6 +7,7 @@ import { catchAsync } from "./catchAsync.js";
 import { AppError } from "./appError.js";
 
 let io;
+const onlineUsers = new Map(); // userId string -> Set<socketId>
 
 export const socketManager = {
   /**
@@ -66,12 +67,29 @@ export const socketManager = {
     io.on("connection", async (socket) => {
       console.log(`User connected: ${socket.user.name} (${socket.id})`);
 
+      const userId = socket.user._id.toString();
+
+      // Track online presence (handle multiple sockets/tabs per user)
+      if (!onlineUsers.has(userId)) {
+        onlineUsers.set(userId, new Set());
+      }
+      const wasOffline = onlineUsers.get(userId).size === 0;
+      onlineUsers.get(userId).add(socket.id);
+
       // 5. AUTO-JOIN TEAM ROOMS
       if (socket.user.teams && socket.user.teams.length > 0) {
         socket.user.teams.forEach((team) => {
           const roomName = `team_${team._id}`;
           socket.join(roomName);
           console.log(`User ${socket.user.name} joined room: ${roomName}`);
+
+          // Broadcast presence update to teammates if user just transitioned to online
+          if (wasOffline) {
+            io.to(roomName).emit("user_presence_changed", {
+              userId,
+              status: "online",
+            });
+          }
         });
       }
 
@@ -81,6 +99,18 @@ export const socketManager = {
         socket.join(roomName);
         console.log(`User ${socket.user.name} joined room: ${roomName}`);
       }
+
+      // Send initial active user list to connecting socket
+      socket.emit("online_users_list", {
+        onlineUserIds: Array.from(onlineUsers.keys()),
+      });
+
+      // Allow client to query active presence on demand
+      socket.on("get_online_users", () => {
+        socket.emit("online_users_list", {
+          onlineUserIds: Array.from(onlineUsers.keys()),
+        });
+      });
 
       // 7. JOIN SPECIFIC TICKET ROOM (Called by frontend when opening a ticket)
       socket.on("join_ticket", (ticketId) => {
@@ -286,6 +316,24 @@ export const socketManager = {
 
       socket.on("disconnect", () => {
         console.log(`User disconnected: ${socket.user.name}`);
+        const userId = socket.user._id.toString();
+        if (onlineUsers.has(userId)) {
+          const userSockets = onlineUsers.get(userId);
+          userSockets.delete(socket.id);
+          if (userSockets.size === 0) {
+            onlineUsers.delete(userId);
+            // Broadcast offline event to all teams
+            if (socket.user.teams && socket.user.teams.length > 0) {
+              socket.user.teams.forEach((team) => {
+                io.to(`team_${team._id}`).emit("user_presence_changed", {
+                  userId,
+                  status: "offline",
+                  lastSeen: new Date().toISOString(),
+                });
+              });
+            }
+          }
+        }
       });
     });
 

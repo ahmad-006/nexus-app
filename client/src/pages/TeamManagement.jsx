@@ -28,10 +28,12 @@ import {
 import InviteMemberModal from '../components/team/InviteMemberModal';
 import ConfirmationModal from '../components/ui/ConfirmationModal';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import useChatStore from '../store/chatStore';
 
 const TeamManagement = () => {
   useDocumentTitle('Team');
   const { user } = useAuthStore();
+  const { onlineUserIds } = useChatStore();
   const { activeTeamId, setActiveTeamId } = useTeamStore();
   const { teams = [], isLoading: isLoadingTeams } = useMyTeams();
   const { data: teamDetails, isLoading: isLoadingDetails } = useTeamDetails(activeTeamId);
@@ -349,10 +351,17 @@ const TeamManagement = () => {
 
                         {/* Status */}
                         <td className="py-4 px-4">
-                          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Active
-                          </span>
+                          {onlineUserIds.has(memberId) || isCurrentOperative ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              Online
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
+                              Offline
+                            </span>
+                          )}
                         </td>
 
                         {/* Actions */}

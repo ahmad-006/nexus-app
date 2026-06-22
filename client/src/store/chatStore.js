@@ -5,10 +5,33 @@ const useChatStore = create((set) => ({
   activeConversation: { type: 'TEAM', id: 'team', name: 'Team Group' },
   unreadCounts: {},
   typingUsers: {},
+  onlineUserIds: new Set(),
+  lastSeenMap: {},
 
   setActiveConversation: (conversation) =>
     set({
       activeConversation: conversation,
+    }),
+
+  setOnlineUsers: (ids = []) =>
+    set({
+      onlineUserIds: new Set(ids.map(String)),
+    }),
+
+  setUserPresence: (userId, status, lastSeen) =>
+    set((state) => {
+      const next = new Set(state.onlineUserIds);
+      const uStr = String(userId);
+      if (status === 'online') {
+        next.add(uStr);
+      } else {
+        next.delete(uStr);
+      }
+      const nextLastSeen = { ...state.lastSeenMap };
+      if (lastSeen) {
+        nextLastSeen[uStr] = lastSeen;
+      }
+      return { onlineUserIds: next, lastSeenMap: nextLastSeen };
     }),
 
   setUnreadCounts: (counts) => set({ unreadCounts: counts || {} }),

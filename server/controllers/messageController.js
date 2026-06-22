@@ -244,3 +244,84 @@ export const deleteMessage = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * @desc    Get latest message snippet and timestamp for each conversation in a team
+ * @route   GET /api/messages/:teamId/conversations
+ * @access  Private
+ */
+export const getConversationSummaries = catchAsync(async (req, res) => {
+  const { teamId } = req.params;
+  const userId = new mongoose.Types.ObjectId(req.user.id);
+  const teamObjId = new mongoose.Types.ObjectId(teamId);
+
+  const summaries = await Message.aggregate([
+    {
+      $match: {
+        teamId: teamObjId,
+        $or: [
+          { receiverId: null },
+          { receiverId: { $exists: false } },
+          { senderId: userId },
+          { receiverId: userId },
+        ],
+      },
+    },
+    {
+      $sort: { createdAt: -1 },
+    },
+    {
+      $project: {
+        message: 1,
+        senderId: 1,
+        receiverId: 1,
+        createdAt: 1,
+        isRead: 1,
+        conversationKey: {
+          $cond: [
+            {
+              $or: [
+                { $eq: ["$receiverId", null] },
+                { $not: ["$receiverId"] },
+              ],
+            },
+            "team",
+            {
+              $cond: [
+                { $eq: ["$senderId", userId] },
+                { $toString: "$receiverId" },
+                { $toString: "$senderId" },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
+      $group: {
+        _id: "$conversationKey",
+        lastMessage: { $first: "$message" },
+        lastMessageSenderId: { $first: "$senderId" },
+        lastMessageTime: { $first: "$createdAt" },
+        isRead: { $first: "$isRead" },
+      },
+    },
+  ]);
+
+  const conversations = {};
+  summaries.forEach((item) => {
+    conversations[item._id] = {
+      lastMessage: item.lastMessage,
+      lastMessageSenderId: item.lastMessageSenderId?.toString(),
+      lastMessageTime: item.lastMessageTime,
+      isRead: item.isRead,
+    };
+  });
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      conversations,
+    },
+  });
+});
+
