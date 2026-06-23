@@ -118,15 +118,24 @@ const TicketActivity = ({ ticketId, teamId }) => {
       });
     };
 
+    const handleReceiveActivity = (newActivity) => {
+      queryClient.setQueryData(ticketKeys.activities(ticketId), (prev = []) => {
+        if (prev.some(a => a._id === newActivity._id)) return prev;
+        return [newActivity, ...prev];
+      });
+    };
+
     socket.on('receive_comment', handleReceiveComment);
     socket.on('update_comment', handleUpdateComment);
     socket.on('delete_comment', handleDeleteComment);
+    socket.on('receive_activity', handleReceiveActivity);
 
     return () => {
       socket.emit('leave_ticket', ticketId);
       socket.off('receive_comment', handleReceiveComment);
       socket.off('update_comment', handleUpdateComment);
       socket.off('delete_comment', handleDeleteComment);
+      socket.off('receive_activity', handleReceiveActivity);
     };
   }, [ticketId, queryClient]);
 
