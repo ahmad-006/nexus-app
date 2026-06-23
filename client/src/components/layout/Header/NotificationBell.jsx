@@ -58,6 +58,7 @@ const getNotificationIcon = (type) => {
         </div>
       );
     case 'COMMENT_MENTION':
+    case 'TICKET_COMMENT':
       return (
         <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
           <MessageSquare className="w-3.5 h-3.5" />

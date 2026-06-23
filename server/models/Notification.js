@@ -14,7 +14,7 @@ const notificationSchema = new Schema(
     },
     type: {
       type: String,
-      enum: ['TEAM_INVITE', 'TICKET_ASSIGNED', 'TICKET_STATUS_CHANGED', 'COMMENT_MENTION'],
+      enum: ['TEAM_INVITE', 'TICKET_ASSIGNED', 'TICKET_STATUS_CHANGED', 'COMMENT_MENTION', 'TICKET_COMMENT'],
       required: true,
     },
     message: {

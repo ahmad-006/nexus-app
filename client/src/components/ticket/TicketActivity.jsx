@@ -223,6 +223,24 @@ const TicketActivity = ({ ticketId, teamId }) => {
     });
   };
 
+  const renderFormattedText = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(@[A-Za-z0-9._-]+)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('@') && part.length > 1) {
+        return (
+          <span
+            key={index}
+            className="font-semibold text-slate-900 bg-slate-100/90 px-1.5 py-0.5 rounded text-[13px] border border-slate-200/80"
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   if (isLoading && comments.length === 0) {
     return (
       <div className="flex flex-col gap-6 mt-2 pt-8 border-t border-slate-200/60 w-full max-w-4xl animate-pulse">
@@ -464,7 +482,7 @@ const TicketActivity = ({ ticketId, teamId }) => {
                     </div>
                   ) : (
                     <div className="text-[14px] md:text-[15px] text-slate-800 whitespace-pre-wrap leading-relaxed">
-                      {comment.text}
+                      {renderFormattedText(comment.text)}
                     </div>
                   )}
 
@@ -564,7 +582,7 @@ const TicketActivity = ({ ticketId, teamId }) => {
                               </div>
                             ) : (
                               <div className="text-[13.5px] md:text-[14px] text-slate-700 whitespace-pre-wrap leading-relaxed">
-                                {reply.text}
+                                {renderFormattedText(reply.text)}
                               </div>
                             )}
                           </div>

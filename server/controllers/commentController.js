@@ -1,10 +1,12 @@
 import { Types } from "mongoose";
 import { Comment } from "../models/Comment.js";
 import { Ticket } from "../models/Ticket.js";
+import { Team } from "../models/Team.js";
 import { catchAsync } from "../util/catchAsync.js";
 import { AppError } from "../util/appError.js";
 import { logActivity } from "./activityController.js";
 import { socketManager } from "../util/socket.js";
+import { createNotification } from "../util/notificationService.js";
 
 /**
  * @desc    Get all top-level comments for a specific ticket
@@ -144,6 +146,102 @@ export const postComment = catchAsync(async (req, res, next) => {
 
   // Broadcast to anyone in the ticket room
   socketManager.getIO().to(`ticket_${ticketId}`).emit("receive_comment", populatedComment);
+
+  // Dispatch persistent notifications and mentions asynchronously (non-blocking)
+  (async () => {
+    try {
+      const notifiedUserIds = new Set();
+      const currentUserId = req.user.id.toString();
+
+      // 1. Process @mentions for team members
+      const team = await Team.findById(ticket.teamId).populate("members.userId", "name email");
+      const teamMembers = team?.members?.map((m) => m.userId).filter(Boolean) || [];
+
+      for (const member of teamMembers) {
+        const memberIdStr = member._id.toString();
+        if (memberIdStr === currentUserId) continue;
+
+        const fullName = member.name?.trim().toLowerCase() || "";
+        const firstName = fullName.split(/\s+/)[0];
+        const emailPrefix = member.email ? member.email.split("@")[0].toLowerCase() : "";
+
+        const escapeReg = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const patterns = [fullName];
+        if (firstName && firstName.length >= 2 && firstName !== fullName) {
+          patterns.push(firstName);
+        }
+        if (emailPrefix && emailPrefix.length >= 2 && emailPrefix !== firstName && emailPrefix !== fullName) {
+          patterns.push(emailPrefix);
+        }
+
+        const isMentioned = patterns.some((p) => {
+          const regex = new RegExp(`@${escapeReg(p)}(?:\\b|[^a-zA-Z0-9]|$)`, "i");
+          return regex.test(text);
+        });
+
+        if (isMentioned) {
+          notifiedUserIds.add(memberIdStr);
+          await createNotification({
+            recipientId: member._id,
+            senderId: req.user.id,
+            type: "COMMENT_MENTION",
+            message: `${req.user.name} mentioned you in a comment on "${ticket.title}"`,
+            resourceId: ticket._id,
+          });
+        }
+      }
+
+      // 2. If reply to an existing comment, notify parent comment author
+      if (commentId) {
+        const parentComment = await Comment.findById(commentId);
+        if (parentComment && parentComment.authorId) {
+          const parentAuthorIdStr = parentComment.authorId.toString();
+          if (parentAuthorIdStr !== currentUserId && !notifiedUserIds.has(parentAuthorIdStr)) {
+            notifiedUserIds.add(parentAuthorIdStr);
+            await createNotification({
+              recipientId: parentComment.authorId,
+              senderId: req.user.id,
+              type: "TICKET_COMMENT",
+              message: `${req.user.name} replied to your comment on "${ticket.title}"`,
+              resourceId: ticket._id,
+            });
+          }
+        }
+      }
+
+      // 3. Notify ticket assignee
+      if (ticket.assigneeId) {
+        const assigneeIdStr = ticket.assigneeId.toString();
+        if (assigneeIdStr !== currentUserId && !notifiedUserIds.has(assigneeIdStr)) {
+          notifiedUserIds.add(assigneeIdStr);
+          await createNotification({
+            recipientId: ticket.assigneeId,
+            senderId: req.user.id,
+            type: "TICKET_COMMENT",
+            message: `${req.user.name} commented on your assigned ticket "${ticket.title}"`,
+            resourceId: ticket._id,
+          });
+        }
+      }
+
+      // 4. Notify ticket reporter
+      if (ticket.reporterId) {
+        const reporterIdStr = ticket.reporterId.toString();
+        if (reporterIdStr !== currentUserId && !notifiedUserIds.has(reporterIdStr)) {
+          notifiedUserIds.add(reporterIdStr);
+          await createNotification({
+            recipientId: ticket.reporterId,
+            senderId: req.user.id,
+            type: "TICKET_COMMENT",
+            message: `${req.user.name} commented on your ticket "${ticket.title}"`,
+            resourceId: ticket._id,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error dispatching comment notifications:", err);
+    }
+  })();
 
   return res.status(201).json({
     status: "success",
