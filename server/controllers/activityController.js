@@ -1,9 +1,27 @@
 import Activity from "../models/Activity.js";
 import { catchAsync } from "../util/catchAsync.js";
+import { socketManager } from "../util/socket.js";
 
 export const logActivity = async (data) => {
   try {
-    await Activity.create(data);
+    const activity = await Activity.create(data);
+
+    // Broadcast real-time activity to connected ticket room
+    if (data.resourceType === "Ticket" && data.resourceId) {
+      try {
+        const populated = await Activity.findById(activity._id)
+          .populate("userId", "name image email");
+
+        if (populated) {
+          const io = socketManager.getIO();
+          io.to(`ticket_${data.resourceId}`).emit("receive_activity", populated);
+        }
+      } catch (socketError) {
+        // Safe failover if socketManager is uninitialized in standalone scripts
+      }
+    }
+
+    return activity;
   } catch (error) {
     console.log(error);
   }
