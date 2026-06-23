@@ -31,3 +31,26 @@ export const getActivities = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+/**
+ * @desc    Get all audit activities for a specific ticket
+ * @route   GET /api/tickets/:ticketId/activities
+ * @access  Private (Member)
+ */
+export const getTicketActivities = catchAsync(async (req, res, next) => {
+  const { ticketId } = req.params;
+
+  const activities = await Activity.find({ resourceId: ticketId })
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .populate("userId", "name image email");
+
+  return res.status(200).json({
+    status: "success",
+    results: activities.length,
+    data: {
+      activities,
+    },
+  });
+});
+

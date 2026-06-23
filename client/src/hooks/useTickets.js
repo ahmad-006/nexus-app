@@ -30,6 +30,11 @@ export const fetchTicketComments = async (ticketId, signal) => {
   return response.data.data.comments || [];
 };
 
+export const fetchTicketActivities = async (ticketId, signal) => {
+  const response = await axiosInstance.get(`/tickets/${ticketId}/activities`, { signal });
+  return response.data.data.activities || [];
+};
+
 export const fetchMyTickets = async (signal) => {
   const response = await axiosInstance.get('/users/me/tickets', { signal });
   return response.data.data.tickets || [];
@@ -100,6 +105,18 @@ export const useTicketComments = (ticketId) => {
   return useQuery({
     queryKey: ticketKeys.comments(ticketId),
     queryFn: ({ signal }) => fetchTicketComments(ticketId, signal),
+    enabled: !!ticketId,
+  });
+};
+
+/**
+ * Fetch all audit activities for a specific ticket.
+ * Cached under ticketKeys.activities(ticketId).
+ */
+export const useTicketActivities = (ticketId) => {
+  return useQuery({
+    queryKey: ticketKeys.activities(ticketId),
+    queryFn: ({ signal }) => fetchTicketActivities(ticketId, signal),
     enabled: !!ticketId,
   });
 };
@@ -342,6 +359,7 @@ export const useUpdateTicket = (ticketId, teamId) => {
         }));
       }
       queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticketId) });
+      queryClient.invalidateQueries({ queryKey: ticketKeys.activities(ticketId) });
       if (teamId) {
         queryClient.invalidateQueries({ queryKey: ticketKeys.list(teamId) });
         queryClient.invalidateQueries({ queryKey: ticketKeys.stats(teamId) });
@@ -405,6 +423,7 @@ export const useAssignTicket = (ticketId, teamId) => {
         }));
       }
       queryClient.invalidateQueries({ queryKey: ticketKeys.detail(ticketId) });
+      queryClient.invalidateQueries({ queryKey: ticketKeys.activities(ticketId) });
       if (teamId) {
         queryClient.invalidateQueries({ queryKey: ticketKeys.list(teamId) });
         queryClient.invalidateQueries({ queryKey: ticketKeys.stats(teamId) });
@@ -637,6 +656,7 @@ export const useDeleteAttachment = (ticketId, teamId) => {
           )
         );
       }
+      queryClient.invalidateQueries({ queryKey: ticketKeys.activities(ticketId) });
       toast.success('Attachment removed');
     },
     onError: (err) => {

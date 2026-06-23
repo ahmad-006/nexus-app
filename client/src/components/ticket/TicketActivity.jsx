@@ -1,18 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Send, MessageSquare, Trash2, Edit2, Activity, CornerDownRight, MessageCircle, Smile } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { socket } from '../../api/socket';
 import useAuthStore from '../../store/authStore';
 import { toast } from 'sonner';
-import { useTicketComments, useAddComment, useDeleteComment, useUpdateComment } from '../../hooks/useTickets';
+import { useTicketComments, useTicketActivities, useAddComment, useDeleteComment, useUpdateComment } from '../../hooks/useTickets';
 import { ticketKeys } from '../../api/queryKeys';
 
 const TicketActivity = ({ ticketId, teamId }) => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
 
-  const { data: comments = [], isLoading } = useTicketComments(ticketId);
+  const { data: comments = [], isLoading: isCommentsLoading } = useTicketComments(ticketId);
+  const { data: activities = [], isLoading: isActivitiesLoading } = useTicketActivities(ticketId);
+  const isLoading = isCommentsLoading && isActivitiesLoading;
   const addCommentMutation = useAddComment(ticketId, teamId);
   const deleteCommentMutation = useDeleteComment(ticketId, teamId);
   const updateCommentMutation = useUpdateComment(ticketId);
@@ -128,12 +130,84 @@ const TicketActivity = ({ ticketId, teamId }) => {
     };
   }, [ticketId, queryClient]);
 
-  // Sort newest first (matches YouTube and top-input layout)
-  const sortedComments = [...comments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const filteredComments = sortedComments.filter(c => {
-    if (filterMode === 'COMMENTS') return c.type !== 'system';
-    return true;
-  });
+  const formatActivityEvent = (act) => {
+    const details = act.details || {};
+
+    switch (act.action) {
+      case 'TICKET_CREATED':
+        return 'created this task';
+      case 'TICKET_STATUS_UPDATED': {
+        const from = (details.from || 'TODO').replace(/_/g, ' ');
+        const to = (details.to || 'IN_PROGRESS').replace(/_/g, ' ');
+        return `changed status from ${from} to ${to}`;
+      }
+      case 'TICKET_ASSIGNED': {
+        if (!details.assignedTo || details.assignedTo === 'Unassigned') {
+          return 'unassigned this task';
+        }
+        return `assigned this task to ${details.assignedTo}`;
+      }
+      case 'TICKET_UPDATED': {
+        if (details.dueDate !== undefined) {
+          if (details.dueDate) {
+            const dateStr = new Date(details.dueDate).toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            });
+            return `set due date to ${dateStr}`;
+          }
+          return 'cleared the due date';
+        }
+        if (details.priority) {
+          return `changed priority to ${details.priority}`;
+        }
+        if (details.title) {
+          return `renamed task to "${details.title}"`;
+        }
+        return 'updated task details';
+      }
+      case 'TICKET_ATTACHMENTS_ADDED': {
+        const count = details.count || 1;
+        return `attached ${count} file${count > 1 ? 's' : ''}`;
+      }
+      case 'TICKET_ATTACHMENT_DELETED': {
+        const name = details.attachmentName ? `"${details.attachmentName}"` : 'an attachment';
+        return `removed attachment ${name}`;
+      }
+      default:
+        return act.action.toLowerCase().replace(/_/g, ' ');
+    }
+  };
+
+  const combinedTimeline = useMemo(() => {
+    const commentItems = comments.map((c) => ({
+      ...c,
+      isComment: true,
+      createdAtDate: new Date(c.createdAt),
+    }));
+
+    const activityItems = activities.map((a) => ({
+      _id: a._id,
+      isComment: false,
+      type: 'system',
+      actor: a.userId,
+      text: formatActivityEvent(a),
+      createdAt: a.createdAt,
+      createdAtDate: new Date(a.createdAt),
+    }));
+
+    return [...commentItems, ...activityItems].sort(
+      (a, b) => b.createdAtDate - a.createdAtDate
+    );
+  }, [comments, activities]);
+
+  const displayedTimeline = useMemo(() => {
+    if (filterMode === 'COMMENTS') {
+      return combinedTimeline.filter((item) => item.isComment && item.type !== 'system');
+    }
+    return combinedTimeline;
+  }, [combinedTimeline, filterMode]);
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -274,7 +348,7 @@ const TicketActivity = ({ ticketId, teamId }) => {
         <div className="flex items-center gap-2.5">
           <h3 className="text-lg font-semibold text-slate-900">Activity Thread</h3>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60">
-            {filteredComments.length}
+            {displayedTimeline.length}
           </span>
         </div>
         <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200/60">
@@ -365,40 +439,45 @@ const TicketActivity = ({ ticketId, teamId }) => {
 
       {/* Chronological Thread (Top to Bottom) */}
       <div className="flex flex-col mb-8">
-        {filteredComments.length === 0 ? (
+        {displayedTimeline.length === 0 ? (
           <div className="text-center py-12 bg-slate-50/50 rounded-2xl border border-dashed border-slate-300">
             <MessageSquare className="w-10 h-10 mx-auto text-slate-300 mb-3" />
             <p className="text-slate-500 font-medium">No activity yet</p>
             <p className="text-slate-400 text-sm mt-1">Be the first to share an update or leave a comment.</p>
           </div>
         ) : (
-          filteredComments.map((comment, index) => {
-            
-            // SYSTEM EVENT
-            if (comment.type === 'system') {
+          displayedTimeline.map((item, index) => {
+            // SYSTEM AUDIT EVENT
+            if (item.type === 'system' || !item.isComment) {
               return (
-                <div key={comment._id} className="flex gap-3 md:gap-4 items-start group relative">
+                <div key={item._id} className="flex gap-3 md:gap-4 items-center group py-2 relative">
                   {/* Timeline Axis (Subtle Dot + Vertical Line) */}
                   <div className="w-8 md:w-10 flex flex-col items-center shrink-0 self-stretch relative">
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-2 z-10 ring-4 ring-[#F8F9FA]"></div>
-                    {index !== filteredComments.length - 1 && (
+                    <div className="w-2 h-2 rounded-full bg-slate-300 ring-4 ring-[#F8F9FA] mt-1.5 z-10"></div>
+                    {index !== displayedTimeline.length - 1 && (
                       <div className="w-0.5 h-full bg-slate-200/60 absolute top-2"></div>
                     )}
                   </div>
                   
                   {/* Content */}
-                  <div className="flex-1 flex items-center pb-4 pt-0.5">
-                    <span className="text-xs text-slate-400 font-medium">{comment.text}</span>
-                    <span className="text-[10px] text-slate-300 ml-2 shrink-0">{formatTime(comment.createdAt)}</span>
+                  <div className="flex-1 flex items-center justify-between min-w-0 pb-1 pt-0.5">
+                    <div className="flex items-center gap-1.5 flex-wrap text-[13px] text-slate-600">
+                      <span className="font-semibold text-slate-800">{item.actor?.name || 'A teammate'}</span>
+                      <span className="text-slate-500">{item.text}</span>
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-400 tabular-nums shrink-0 ml-3">
+                      {formatTime(item.createdAt)}
+                    </span>
                   </div>
                 </div>
               );
             }
 
             // USER COMMENT
+            const comment = item;
             const hasReplies = comment.replyCount > 0;
             const isReplying = replyingTo === comment._id;
-            const hasConnectorLine = hasReplies || isReplying || index !== filteredComments.length - 1;
+            const hasConnectorLine = hasReplies || isReplying || index !== displayedTimeline.length - 1;
 
             return (
               <div key={comment._id} className="flex gap-3 md:gap-4 items-start group">

@@ -21,6 +21,7 @@ import {
 import { ticketValidation } from '../middleware/validator.js';
 import { validate } from '../middleware/validate.js';
 import { protect } from '../controllers/authController.js';
+import { getTicketActivities } from '../controllers/activityController.js';
 import { commentRouter } from './commentRoutes.js';
 
 const ticketRouter = express.Router();
@@ -111,5 +112,10 @@ ticketRouter
 ticketRouter
   .route('/:ticketId/attachments/:attachmentId')
   .delete(protect, isMember, deleteTicketAttachment);
+
+// Audit activity trail for a ticket
+ticketRouter
+  .route('/:ticketId/activities')
+  .get(protect, isMember, getTicketActivities);
 
 export { ticketRouter };

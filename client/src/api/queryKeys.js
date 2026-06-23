@@ -34,6 +34,7 @@ export const ticketKeys = {
   details: () => [...ticketKeys.all, 'detail'],
   detail: (ticketId) => [...ticketKeys.details(), ticketId],
   comments: (ticketId) => [...ticketKeys.detail(ticketId), 'comments'],
+  activities: (ticketId) => [...ticketKeys.detail(ticketId), 'activities'],
   myTickets: () => [...ticketKeys.all, 'me'],
   stats: (teamId) => [...ticketKeys.all, 'stats', teamId],
 };
