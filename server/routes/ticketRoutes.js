@@ -10,6 +10,7 @@ import {
   getStats,
   patchReorderTicket,
   postTicketAttachments,
+  deleteTicketAttachment,
   uploadTicketFiles,
 } from '../controllers/ticketController.js';
 import {
@@ -102,9 +103,13 @@ ticketRouter
     patchReorderTicket,
   );
 
-// Uploading attachments to a ticket
+// Uploading and deleting attachments on a ticket
 ticketRouter
   .route('/:ticketId/attachments')
   .post(protect, isMember, uploadTicketFiles, postTicketAttachments);
+
+ticketRouter
+  .route('/:ticketId/attachments/:attachmentId')
+  .delete(protect, isMember, deleteTicketAttachment);
 
 export { ticketRouter };

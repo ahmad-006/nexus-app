@@ -612,3 +612,36 @@ export const useUpdateComment = (ticketId) => {
     },
   });
 };
+
+/**
+ * Mutation to delete a ticket attachment.
+ * Updates ticketKeys.detail(ticketId) and ticketKeys.list(teamId) caches.
+ */
+export const useDeleteAttachment = (ticketId, teamId) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (attachmentId) => {
+      const response = await axiosInstance.delete(`/tickets/${ticketId}/attachments/${attachmentId}`);
+      return response.data.data;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(ticketKeys.detail(ticketId), (prev) => {
+        if (!prev) return prev;
+        return { ...prev, attachments: data.attachments };
+      });
+      if (teamId) {
+        queryClient.setQueryData(ticketKeys.list(teamId), (oldTickets = []) =>
+          oldTickets.map((t) =>
+            t._id === ticketId ? { ...t, attachments: data.attachments } : t
+          )
+        );
+      }
+      toast.success('Attachment removed');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to delete attachment');
+    },
+  });
+};
+

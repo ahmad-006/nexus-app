@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
 import useAuthStore from '../../store/authStore';
 import useTeamStore from '../../store/teamStore';
-import { Pencil, Paperclip, Download, X, Expand, ChevronLeft, ChevronRight, UploadCloud, Loader2, Plus } from 'lucide-react';
+import { Pencil, Paperclip, Download, X, Expand, ChevronLeft, ChevronRight, UploadCloud, Loader2, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../api/axios';
 import { toast } from 'sonner';
@@ -70,6 +70,23 @@ const TicketNarrative = ({ ticket, onUpdate }) => {
       toast.error(err.response?.data?.message || 'Failed to upload attachments');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState(null);
+
+  const handleDeleteAttachment = async (attachmentId) => {
+    if (!attachmentId || deletingAttachmentId) return;
+    setDeletingAttachmentId(attachmentId);
+    try {
+      const res = await api.delete(`/tickets/${ticket._id}/attachments/${attachmentId}`);
+      const updatedAttachments = res.data?.data?.attachments || [];
+      onUpdate({ attachments: updatedAttachments });
+      toast.success('Attachment removed');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete attachment');
+    } finally {
+      setDeletingAttachmentId(null);
     }
   };
 
@@ -254,40 +271,84 @@ const TicketNarrative = ({ ticket, onUpdate }) => {
           <div className="flex flex-row flex-wrap gap-4">
             {ticket.attachments.map((file, idx) => {
               const fileIsImage = isImage(file.name);
+              const attachmentId = file._id || file.fileId;
+              const isDeleting = deletingAttachmentId === attachmentId;
               
               if (fileIsImage) {
                 const galleryIndex = imageAttachments.findIndex(img => img.url === file.url);
                 return (
                   <div
-                    key={idx}
-                    onClick={() => setLightboxIndex(galleryIndex)}
-                    className="group w-32 h-32 rounded-xl bg-slate-50 overflow-hidden border border-slate-200/60 shadow-sm hover:shadow-md transition-all cursor-pointer relative"
+                    key={file._id || idx}
+                    className="group w-32 h-32 rounded-xl bg-slate-50 overflow-hidden border border-slate-200/60 shadow-sm hover:shadow-md transition-all relative"
                   >
-                    <img src={file.url} alt={file.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <div className="bg-white p-2 rounded-full shadow-sm text-slate-700 hover:text-slate-900 transition-colors">
-                        <Expand className="w-4 h-4" />
-                      </div>
+                    <img
+                      src={file.url}
+                      alt={file.name}
+                      onClick={() => setLightboxIndex(galleryIndex)}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
+                      <button
+                        type="button"
+                        onClick={() => setLightboxIndex(galleryIndex)}
+                        className="bg-white/95 hover:bg-white p-2 rounded-lg shadow-sm text-slate-700 hover:text-slate-900 border border-slate-200/80 transition-colors cursor-pointer"
+                        title="View image"
+                      >
+                        <Expand className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteAttachment(attachmentId);
+                        }}
+                        disabled={isDeleting}
+                        className="bg-white/95 hover:bg-white p-2 rounded-lg shadow-sm text-slate-500 hover:text-rose-600 border border-slate-200/80 transition-colors cursor-pointer disabled:opacity-50"
+                        title="Delete attachment"
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                      </button>
                     </div>
                   </div>
                 );
               }
 
               return (
-                <a
-                  key={idx}
-                  href={file.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group flex items-center gap-3 p-3 pr-4 bg-white rounded-xl border border-slate-200/60 shadow-sm hover:border-slate-400 hover:shadow-md transition-all cursor-pointer h-16 max-w-[240px]"
+                <div
+                  key={file._id || idx}
+                  className="group flex items-center gap-3 p-3 pr-3 bg-white rounded-xl border border-slate-200/60 shadow-sm hover:border-slate-300 hover:shadow-md transition-all h-16 max-w-[260px] relative"
                 >
-                  <div className="w-10 h-10 shrink-0 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Paperclip className="w-5 h-5" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-700 line-clamp-2" title={file.name}>
-                    {file.name}
-                  </span>
-                </a>
+                  <a
+                    href={file.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-3 flex-1 min-w-0"
+                  >
+                    <div className="w-10 h-10 shrink-0 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                      <Paperclip className="w-5 h-5" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700 truncate" title={file.name}>
+                      {file.name}
+                    </span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAttachment(attachmentId)}
+                    disabled={isDeleting}
+                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                    title="Delete attachment"
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               );
             })}
 
@@ -330,13 +391,32 @@ const TicketNarrative = ({ ticket, onUpdate }) => {
               onClick={() => setLightboxIndex(null)}
               className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4 sm:p-8"
             >
-              {/* Close Button */}
-              <button 
-                className="absolute top-6 right-6 p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors backdrop-blur-md z-50"
-                onClick={() => setLightboxIndex(null)}
-              >
-                <X className="w-6 h-6" />
-              </button>
+              {/* Actions Header */}
+              <div className="absolute top-6 right-6 flex items-center gap-2 z-50">
+                <button
+                  type="button"
+                  className="p-2.5 bg-white/10 hover:bg-rose-600/80 text-white rounded-full transition-colors backdrop-blur-md cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const currentImg = imageAttachments[lightboxIndex];
+                    if (currentImg) {
+                      handleDeleteAttachment(currentImg._id || currentImg.fileId);
+                      setLightboxIndex(null);
+                    }
+                  }}
+                  title="Delete image"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+                <button 
+                  type="button"
+                  className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors backdrop-blur-md cursor-pointer"
+                  onClick={() => setLightboxIndex(null)}
+                  title="Close gallery"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
               {/* Left Arrow */}
               {lightboxIndex > 0 && (

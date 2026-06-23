@@ -625,6 +625,62 @@ export const postTicketAttachments = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * @desc    Delete a specific attachment from a ticket
+ * @route   DELETE /api/tickets/:ticketId/attachments/:attachmentId
+ * @access  Private (Member)
+ */
+const deleteTicketAttachment = catchAsync(async (req, res, next) => {
+  const { ticketId, attachmentId } = req.params;
+
+  const ticket = await Ticket.findById(ticketId);
+  if (!ticket) return next(new AppError("Ticket not found", 404));
+
+  // Locate the attachment by _id or fileId
+  const attachment =
+    ticket.attachments.id(attachmentId) ||
+    ticket.attachments.find(
+      (a) => a._id?.toString() === attachmentId || a.fileId === attachmentId
+    );
+
+  if (!attachment) {
+    return next(new AppError("Attachment not found", 404));
+  }
+
+  // Delete from ImageKit if it's an uploaded file
+  if (attachment.fileId && !attachment.fileId.startsWith("mock_")) {
+    try {
+      await imagekit.deleteFile(attachment.fileId);
+    } catch (ikErr) {
+      console.error("ImageKit file deletion error (non-fatal):", ikErr.message);
+    }
+  }
+
+  const updatedTicket = await Ticket.findByIdAndUpdate(
+    ticketId,
+    { $pull: { attachments: { _id: attachment._id } } },
+    { new: true }
+  );
+
+  // LOG ACTIVITY
+  logActivity({
+    userId: req.user.id,
+    action: "TICKET_ATTACHMENT_DELETED",
+    resourceType: "Ticket",
+    resourceId: ticketId,
+    teamId: ticket.teamId,
+    details: { attachmentName: attachment.name, attachmentId: attachment._id },
+  });
+
+  return res.status(200).json({
+    status: "success",
+    data: {
+      attachments: updatedTicket.attachments,
+    },
+  });
+});
+
+
 
 const patchReorderTicket = catchAsync(async (req, res, next) => {
   const { ticketId } = req.params;
@@ -695,4 +751,5 @@ export {
   assignToUser,
   patchTicketStatus,
   patchReorderTicket,
+  deleteTicketAttachment,
 };
