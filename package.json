@@ -1,0 +1,21 @@
+{
+  "name": "nexus",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NEXUS Real-Time Ticket Management & Engineering Workspace Platform",
+  "scripts": {
+    "build": "cd client && bun install && bun run build && cd ../server && bun install",
+    "install:all": "cd client && bun install && cd ../server && bun install",
+    "start": "bun server/server.js"
+  },
+  "keywords": [
+    "react",
+    "express",
+    "socketio",
+    "mongodb",
+    "kanban",
+    "bun"
+  ],
+  "author": "Ahmad Aamir <ahmadaamir1806@gmail.com>",
+  "license": "ISC"
+}
