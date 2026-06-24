@@ -399,26 +399,43 @@ const TicketActivity = ({ ticketId, teamId }) => {
     <div className="flex flex-col mt-2 pt-8 border-t border-slate-200/60 w-full max-w-4xl pb-safe relative">
       
       {/* Header & Filter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-2.5">
           <h3 className="text-lg font-semibold text-slate-900">Activity Thread</h3>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60">
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60 font-mono tabular-nums">
             {displayedTimeline.length}
           </span>
         </div>
-        <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200/60">
-          <button
-            onClick={() => setFilterMode('ALL')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${filterMode === 'ALL' ? 'bg-white text-slate-800 shadow-sm border border-slate-200/60' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            All Activity
-          </button>
-          <button
-            onClick={() => setFilterMode('COMMENTS')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${filterMode === 'COMMENTS' ? 'bg-white text-slate-800 shadow-sm border border-slate-200/60' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Comments Only
-          </button>
+        <div className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none bg-slate-100/80 p-1 rounded-lg border border-slate-200/60">
+          {FILTER_OPTIONS.map((opt) => {
+            const count = filterCounts[opt.id] ?? 0;
+            const isActive = filterMode === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setFilterMode(opt.id)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
+                  isActive
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <span>{opt.label}</span>
+                {count > 0 && (
+                  <span
+                    className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full tabular-nums ${
+                      isActive
+                        ? 'bg-slate-100 text-slate-700'
+                        : 'bg-slate-200/60 text-slate-500'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -497,8 +514,18 @@ const TicketActivity = ({ ticketId, teamId }) => {
         {displayedTimeline.length === 0 ? (
           <div className="text-center py-12 bg-slate-50/50 rounded-2xl border border-dashed border-slate-300">
             <MessageSquare className="w-10 h-10 mx-auto text-slate-300 mb-3" />
-            <p className="text-slate-500 font-medium">No activity yet</p>
-            <p className="text-slate-400 text-sm mt-1">Be the first to share an update or leave a comment.</p>
+            <p className="text-slate-500 font-medium">
+              {filterMode === 'COMMENTS' && 'No comments yet'}
+              {filterMode === 'STATUS' && 'No status or priority changes recorded'}
+              {filterMode === 'ASSIGNMENTS' && 'No assignment changes recorded'}
+              {filterMode === 'ATTACHMENTS' && 'No attachment activity recorded'}
+              {filterMode === 'ALL' && 'No activity yet'}
+            </p>
+            <p className="text-slate-400 text-sm mt-1">
+              {filterMode === 'COMMENTS'
+                ? 'Be the first to share an update or leave a comment above.'
+                : 'Activities matching this filter will appear here.'}
+            </p>
           </div>
         ) : (
           displayedTimeline.map((item, index) => {
