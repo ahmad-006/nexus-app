@@ -38,6 +38,11 @@ const TicketActivity = ({ ticketId, teamId }) => {
 
   const [filterMode, setFilterMode] = useState('ALL'); // 'ALL' | 'COMMENTS'
   const [fetchingReplies, setFetchingReplies] = useState({});
+  const [expandedDiffs, setExpandedDiffs] = useState({});
+
+  const toggleDiff = (id) => {
+    setExpandedDiffs((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Auto-focus reply input when opened
   useEffect(() => {
@@ -146,9 +151,14 @@ const TicketActivity = ({ ticketId, teamId }) => {
       case 'TICKET_CREATED':
         return 'created this task';
       case 'TICKET_STATUS_UPDATED': {
-        const from = (details.from || 'TODO').replace(/_/g, ' ');
-        const to = (details.to || 'IN_PROGRESS').replace(/_/g, ' ');
+        const from = (details.from || details.oldStatus || 'TODO').replace(/_/g, ' ');
+        const to = (details.to || details.newStatus || 'IN_PROGRESS').replace(/_/g, ' ');
         return `changed status from ${from} to ${to}`;
+      }
+      case 'TICKET_PRIORITY_UPDATED': {
+        const from = details.oldPriority || details.from || 'MEDIUM';
+        const to = details.newPriority || details.to || 'HIGH';
+        return `changed priority from ${from} to ${to}`;
       }
       case 'TICKET_ASSIGNED': {
         if (!details.assignedTo || details.assignedTo === 'Unassigned') {
@@ -157,16 +167,28 @@ const TicketActivity = ({ ticketId, teamId }) => {
         return `assigned this task to ${details.assignedTo}`;
       }
       case 'TICKET_UPDATED': {
-        if (details.dueDate !== undefined) {
-          if (details.dueDate) {
-            const dateStr = new Date(details.dueDate).toLocaleDateString(undefined, {
+        if (details.dueDateChanged || details.dueDate !== undefined) {
+          const targetDate = details.newDueDate || details.dueDate;
+          if (targetDate) {
+            const dateStr = new Date(targetDate).toLocaleDateString(undefined, {
               month: 'short',
               day: 'numeric',
               year: 'numeric',
             });
-            return `set due date to ${dateStr}`;
+            return details.oldDueDate
+              ? `rescheduled due date to ${dateStr}`
+              : `set due date to ${dateStr}`;
           }
           return 'cleared the due date';
+        }
+        if (details.titleChanged) {
+          if (details.oldTitle && details.newTitle) {
+            return `renamed task from "${details.oldTitle}" to "${details.newTitle}"`;
+          }
+          return `renamed task to "${details.newTitle || details.title || ''}"`;
+        }
+        if (details.descriptionChanged) {
+          return 'updated task description';
         }
         if (details.priority) {
           return `changed priority to ${details.priority}`;
@@ -229,6 +251,7 @@ const TicketActivity = ({ ticketId, teamId }) => {
       type: 'system',
       actor: a.userId,
       text: formatActivityEvent(a),
+      details: a.details,
       createdAt: a.createdAt,
       createdAtDate: new Date(a.createdAt),
     }));
@@ -542,14 +565,43 @@ const TicketActivity = ({ ticketId, teamId }) => {
                   </div>
                   
                   {/* Content */}
-                  <div className="flex-1 flex items-center justify-between min-w-0 pb-1 pt-0.5">
-                    <div className="flex items-center gap-1.5 flex-wrap text-[13px] text-slate-600">
-                      <span className="font-semibold text-slate-800">{item.actor?.name || 'A teammate'}</span>
-                      <span className="text-slate-500">{item.text}</span>
+                  <div className="flex-1 flex flex-col min-w-0 pb-1 pt-0.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 flex-wrap text-[13px] text-slate-600">
+                        <span className="font-semibold text-slate-800">{item.actor?.name || 'A teammate'}</span>
+                        <span className="text-slate-500">{item.text}</span>
+                        {item.details?.descriptionChanged && (item.details?.oldDescription || item.details?.newDescription) && (
+                          <button
+                            type="button"
+                            onClick={() => toggleDiff(item._id)}
+                            className="ml-1 inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 px-1.5 py-0.5 rounded border border-slate-200 transition-colors"
+                          >
+                            <span>{expandedDiffs[item._id] ? 'Hide diff' : 'View diff'}</span>
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-mono text-slate-400 tabular-nums shrink-0 ml-3">
+                        {formatTime(item.createdAt)}
+                      </span>
                     </div>
-                    <span className="text-[11px] font-mono text-slate-400 tabular-nums shrink-0 ml-3">
-                      {formatTime(item.createdAt)}
-                    </span>
+
+                    {/* Expandable Description Diff Viewer */}
+                    {item.details?.descriptionChanged && expandedDiffs[item._id] && (
+                      <div className="mt-2 p-2.5 rounded-md border border-slate-200 bg-slate-50/70 text-xs font-mono">
+                        {item.details.oldDescription && (
+                          <div className="flex items-start gap-2 text-red-700 bg-red-50/70 p-1.5 rounded mb-1 border border-red-200/50">
+                            <span className="font-bold select-none text-red-500">-</span>
+                            <span className="line-through whitespace-pre-wrap break-all">{item.details.oldDescription}</span>
+                          </div>
+                        )}
+                        {item.details.newDescription && (
+                          <div className="flex items-start gap-2 text-emerald-800 bg-emerald-50/70 p-1.5 rounded border border-emerald-200/50">
+                            <span className="font-bold select-none text-emerald-600">+</span>
+                            <span className="whitespace-pre-wrap break-all">{item.details.newDescription}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
