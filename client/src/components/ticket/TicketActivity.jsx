@@ -188,17 +188,44 @@ const TicketActivity = ({ ticketId, teamId }) => {
         return act.action.toLowerCase().replace(/_/g, ' ');
     }
   };
+  const getActivityCategory = (act) => {
+    const action = act.action;
+    const details = act.details || {};
+    if (
+      action === 'TICKET_STATUS_UPDATED' ||
+      (action === 'TICKET_UPDATED' && (details.priority !== undefined || details.status !== undefined))
+    ) {
+      return 'STATUS';
+    }
+    if (action === 'TICKET_ASSIGNED') {
+      return 'ASSIGNMENTS';
+    }
+    if (action === 'TICKET_ATTACHMENTS_ADDED' || action === 'TICKET_ATTACHMENT_DELETED') {
+      return 'ATTACHMENTS';
+    }
+    return 'OTHER';
+  };
+
+  const FILTER_OPTIONS = [
+    { id: 'ALL', label: 'All' },
+    { id: 'COMMENTS', label: 'Comments' },
+    { id: 'STATUS', label: 'Status & Priority' },
+    { id: 'ASSIGNMENTS', label: 'Assignments' },
+    { id: 'ATTACHMENTS', label: 'Attachments' },
+  ];
 
   const combinedTimeline = useMemo(() => {
     const commentItems = comments.map((c) => ({
       ...c,
       isComment: true,
+      category: 'COMMENTS',
       createdAtDate: new Date(c.createdAt),
     }));
 
     const activityItems = activities.map((a) => ({
       _id: a._id,
       isComment: false,
+      category: getActivityCategory(a),
       type: 'system',
       actor: a.userId,
       text: formatActivityEvent(a),
@@ -211,11 +238,30 @@ const TicketActivity = ({ ticketId, teamId }) => {
     );
   }, [comments, activities]);
 
+  const filterCounts = useMemo(() => {
+    const counts = {
+      ALL: combinedTimeline.length,
+      COMMENTS: 0,
+      STATUS: 0,
+      ASSIGNMENTS: 0,
+      ATTACHMENTS: 0,
+    };
+    for (const item of combinedTimeline) {
+      if (item.isComment && item.type !== 'system') {
+        counts.COMMENTS += 1;
+      } else if (item.category && counts[item.category] !== undefined) {
+        counts[item.category] += 1;
+      }
+    }
+    return counts;
+  }, [combinedTimeline]);
+
   const displayedTimeline = useMemo(() => {
+    if (filterMode === 'ALL') return combinedTimeline;
     if (filterMode === 'COMMENTS') {
       return combinedTimeline.filter((item) => item.isComment && item.type !== 'system');
     }
-    return combinedTimeline;
+    return combinedTimeline.filter((item) => item.category === filterMode);
   }, [combinedTimeline, filterMode]);
 
   const handleSubmit = async (e) => {
