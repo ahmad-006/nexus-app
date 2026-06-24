@@ -202,19 +202,33 @@ const patchTicket = catchAsync(async (req, res, next) => {
 
   // 2. Log Title, Description or Due Date changes under a general update
   if (title || description || dueDate !== undefined) {
-    logActivity({
-      userId: req.user.id,
-      action: "TICKET_UPDATED",
-      resourceType: "Ticket",
-      resourceId: updatedTicket._id,
-      teamId: oldTicket.teamId,
-      details: {
-        titleChanged: !!title && oldTicket.title !== updatedTicket.title,
-        descriptionChanged:
-          !!description && oldTicket.description !== updatedTicket.description,
-        dueDateChanged: dueDate !== undefined && oldTicket.dueDate?.toString() !== updatedTicket.dueDate?.toString(),
-      },
-    });
+    const titleChanged = !!title && oldTicket.title !== updatedTicket.title;
+    const descriptionChanged =
+      !!description && oldTicket.description !== updatedTicket.description;
+    const dueDateChanged =
+      dueDate !== undefined &&
+      oldTicket.dueDate?.toString() !== updatedTicket.dueDate?.toString();
+
+    if (titleChanged || descriptionChanged || dueDateChanged) {
+      logActivity({
+        userId: req.user.id,
+        action: "TICKET_UPDATED",
+        resourceType: "Ticket",
+        resourceId: updatedTicket._id,
+        teamId: oldTicket.teamId,
+        details: {
+          titleChanged,
+          oldTitle: titleChanged ? oldTicket.title : undefined,
+          newTitle: titleChanged ? updatedTicket.title : undefined,
+          descriptionChanged,
+          oldDescription: descriptionChanged ? oldTicket.description : undefined,
+          newDescription: descriptionChanged ? updatedTicket.description : undefined,
+          dueDateChanged,
+          oldDueDate: dueDateChanged ? oldTicket.dueDate : undefined,
+          newDueDate: dueDateChanged ? updatedTicket.dueDate : undefined,
+        },
+      });
+    }
   }
 
   //sending the response
@@ -402,6 +416,11 @@ const assignToUser = catchAsync(async (req, res, next) => {
     { new: true },
   );
 
+  // LOG SYSTEM HISTORY & AUDIT
+  const assigneeName = assigneeId
+    ? (await User.findById(assigneeId))?.name || "Unknown User"
+    : "None";
+
   //LOGGING SYSTEM EVENT
   logActivity({
     userId: req.user.id,
@@ -412,13 +431,9 @@ const assignToUser = catchAsync(async (req, res, next) => {
     details: {
       oldAssigneeId: ticket.assigneeId || null,
       newAssigneeId: assigneeId,
+      assignedTo: assigneeName,
     },
   });
-
-  // LOG SYSTEM HISTORY
-  const assigneeName = assigneeId
-    ? (await User.findById(assigneeId))?.name || "Unknown User"
-    : "None";
 
   await Comment.create({
     ticketId,
