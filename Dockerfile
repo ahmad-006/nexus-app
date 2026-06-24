@@ -23,12 +23,14 @@ FROM oven/bun:1.2-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=8000
+ENV PORT=7860
 
-# Copy compiled static assets and server runtime
-COPY --from=builder /app/client/dist ./client/dist
-COPY --from=builder /app/server ./server
+# Copy compiled static assets and server runtime with non-root ownership (UID 1000)
+COPY --from=builder --chown=bun:bun /app/client/dist ./client/dist
+COPY --from=builder --chown=bun:bun /app/server ./server
 
-EXPOSE 8000
+USER bun
+
+EXPOSE 7860
 
 CMD ["bun", "server/server.js"]
