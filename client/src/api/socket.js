@@ -1,6 +1,8 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = 'http://localhost:8000'; // Base URL without /api
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  (typeof window !== 'undefined' ? window.location.origin : '');
 
 export const socket = io(SOCKET_URL, {
   autoConnect: false, // Don't connect until authenticated
