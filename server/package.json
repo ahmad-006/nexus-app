@@ -4,9 +4,9 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "bun app.js",
+    "start": "bun server.js",
     "dev": "cross-env NODE_ENV=development bun --watch server.js",
-    "prod": "cross-env NODE_ENV=production bun --watch server.js"
+    "prod": "cross-env NODE_ENV=production bun server.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

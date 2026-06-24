@@ -14,13 +14,15 @@ export const socketManager = {
    * Initialize Socket.io with the HTTP server
    */
   init: (httpServer) => {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      "http://localhost:5173",
+      "http://localhost:8000",
+    ].filter(Boolean);
+
     io = new Server(httpServer, {
       cors: {
-        origin: [
-          process.env.FRONTEND_URL,
-          "http://localhost:5173",
-          "http://localhost:8000",
-        ],
+        origin: allowedOrigins.length > 0 ? allowedOrigins : true,
         methods: ["GET", "POST", "PATCH", "DELETE"],
         credentials: true,
       },
