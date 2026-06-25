@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, CheckSquare, Users, BarChart3, MessageSquare, Settings, LogOut } from 'lucide-react';
 import useAuthStore from '../../../store/authStore';
 import useChatStore from '../../../store/chatStore';
@@ -17,9 +17,10 @@ const NAV_ITEMS = [
 ];
 
 const FloatingDock = () => {
+  const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { logout } = useAuthStore();
-  const { unreadCounts, setActiveConversation } = useChatStore();
+  const { unreadCounts, setActiveConversation, showMobileList } = useChatStore();
   const { data: myInvites = [] } = useMyInvites();
   const pendingInvitesCount = myInvites.filter((inv) => inv.status === 'PENDING').length;
   const unreadMessagesCount = Object.values(unreadCounts).reduce(

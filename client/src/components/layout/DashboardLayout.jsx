@@ -42,7 +42,7 @@ const DashboardLayout = () => {
   useNotificationSocket(navigate);
 
   // Global socket listener and unread polling for real-time chat
-  useChatSocket(activeTeamId);
+  useChatSocket(activeTeamId, navigate);
   useUnreadMessageCounts(activeTeamId);
 
   // Global keydown listeners for Command Palette (⌘K) and Chat Drawer (⌘J)
