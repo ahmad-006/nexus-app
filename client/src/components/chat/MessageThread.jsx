@@ -80,7 +80,23 @@ export default function MessageThread({
     let lastSenderId = null;
     let lastTime = 0;
 
-    messages.forEach((msg) => {
+    // De-duplicate messages by _id and tempId to guarantee no duplicate bubbles
+    const seen = new Set();
+    const uniqueMessages = [];
+
+    for (const msg of messages) {
+      const idKey = String(msg._id);
+      const tempKey = msg.tempId ? String(msg.tempId) : null;
+
+      if (seen.has(idKey)) continue;
+      if (tempKey && seen.has(tempKey)) continue;
+
+      seen.add(idKey);
+      if (tempKey) seen.add(tempKey);
+      uniqueMessages.push(msg);
+    }
+
+    uniqueMessages.forEach((msg) => {
       const msgDate = new Date(msg.createdAt);
       const dateKey = msgDate.toDateString();
 
