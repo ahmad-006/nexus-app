@@ -1,10 +1,12 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import api from '../api/axios';
 import { socket } from '../api/socket';
 import { messageKeys } from '../api/queryKeys';
 import useChatStore from '../store/chatStore';
 import useAuthStore from '../store/authStore';
+import { playNotificationBeep } from '../utils/sound';
 
 /**
  * Fetch team group messages
@@ -84,9 +86,10 @@ export const useSendMessage = (teamId, activeConversation) => {
       const trimmed = messageText.trim();
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const isTeam = activeConversation.type === 'TEAM';
+      const targetId = isTeam ? null : String(activeConversation.id);
       const cacheKey = isTeam
         ? messageKeys.team(teamId)
-        : messageKeys.direct(teamId, activeConversation.id);
+        : messageKeys.direct(teamId, targetId);
 
       const optimisticMessage = {
         _id: tempId,
@@ -99,7 +102,7 @@ export const useSendMessage = (teamId, activeConversation) => {
           image: user?.image,
         },
         teamId,
-        receiverId: isTeam ? null : activeConversation.id,
+        receiverId: targetId,
         createdAt: new Date().toISOString(),
         isSending: true,
         isRead: false,
@@ -111,7 +114,7 @@ export const useSendMessage = (teamId, activeConversation) => {
       // Optimistically update conversation summaries snippet
       queryClient.setQueryData(messageKeys.conversations(teamId), (old = {}) => ({
         ...old,
-        [isTeam ? 'team' : activeConversation.id]: {
+        [isTeam ? 'team' : targetId]: {
           lastMessage: trimmed,
           lastMessageSenderId: user?._id || user?.id,
           lastMessageTime: new Date().toISOString(),
@@ -238,11 +241,12 @@ export const useMarkMessagesRead = (teamId) => {
 /**
  * Real-time Socket Event Synchronizer
  */
-export const useChatSocket = (teamId) => {
+export const useChatSocket = (teamId, navigate) => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const {
     activeConversation,
+    setActiveConversation,
     incrementUnread,
     addTypingUser,
     removeTypingUser,
@@ -252,24 +256,55 @@ export const useChatSocket = (teamId) => {
 
   const currentUserId = user?._id || user?.id;
 
+  const activeConvRef = useRef(activeConversation);
+  useEffect(() => {
+    activeConvRef.current = activeConversation;
+  }, [activeConversation]);
+
+  const navigateRef = useRef(navigate);
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
+
   useEffect(() => {
     if (!socket || !teamId || !currentUserId) return;
 
     const handleReceiveTeam = (data) => {
       if (data.teamId !== teamId) return;
 
+      const senderIdStr = String(typeof data.senderId === 'object' ? data.senderId?._id : data.senderId);
       const cacheKey = messageKeys.team(teamId);
+
       queryClient.setQueryData(cacheKey, (old = []) => {
-        // Reconcile optimistic message if tempId matches
-        if (data.tempId && old.some((m) => m.tempId === data.tempId)) {
-          return old.map((m) => (m.tempId === data.tempId ? { ...data, isSending: false } : m));
+        if (!Array.isArray(old)) return [data];
+
+        // 1. Reconcile optimistic message by tempId
+        if (data.tempId && old.some((m) => m.tempId === data.tempId || m._id === data.tempId)) {
+          return old.map((m) =>
+            m.tempId === data.tempId || m._id === data.tempId
+              ? { ...data, isSending: false }
+              : m
+          );
         }
-        // Avoid duplicate
-        if (old.some((m) => m._id === data._id)) return old;
+
+        // 2. Prevent duplicate by real database _id
+        if (old.some((m) => String(m._id) === String(data._id))) return old;
+
+        // 3. Fallback optimistic match by message text & sender
+        const optIdx = old.findIndex(
+          (m) =>
+            m.isSending &&
+            m.message === data.message &&
+            String(typeof m.senderId === 'object' ? m.senderId?._id : m.senderId) === senderIdStr
+        );
+        if (optIdx !== -1) {
+          const next = [...old];
+          next[optIdx] = { ...data, isSending: false };
+          return next;
+        }
+
         return [...old, data];
       });
-
-      const senderIdStr = typeof data.senderId === 'object' ? data.senderId?._id : data.senderId;
 
       // Real-time update to conversation summaries cache
       queryClient.setQueryData(messageKeys.conversations(teamId), (old = {}) => ({
@@ -281,9 +316,35 @@ export const useChatSocket = (teamId) => {
         },
       }));
 
-      if (senderIdStr !== currentUserId) {
-        if (window.location.pathname !== '/messages' || activeConversation?.type !== 'TEAM') {
+      if (senderIdStr !== String(currentUserId)) {
+        const isLookingAtTeamChat =
+          window.location.pathname === '/messages' &&
+          activeConvRef.current?.type === 'TEAM' &&
+          !document.hidden;
+
+        if (!isLookingAtTeamChat) {
           incrementUnread('team');
+          playNotificationBeep();
+          const senderName = data.senderName || data.senderId?.name || 'Teammate';
+          toast(`💬 ${senderName} in #team`, {
+            description: data.message,
+            action: {
+              label: 'Reply',
+              onClick: () => {
+                setActiveConversation({
+                  type: 'TEAM',
+                  id: 'team',
+                  name: 'Team Group',
+                });
+                if (navigateRef.current) {
+                  navigateRef.current('/messages');
+                } else {
+                  window.location.href = '/messages';
+                }
+              },
+            },
+            duration: 5000,
+          });
         }
       }
     };
@@ -291,15 +352,40 @@ export const useChatSocket = (teamId) => {
     const handleReceivePrivate = (data) => {
       if (data.teamId !== teamId) return;
 
-      const senderIdStr = typeof data.senderId === 'object' ? data.senderId?._id : data.senderId;
-      const partnerId = senderIdStr === currentUserId ? data.receiverId : senderIdStr;
+      const senderIdStr = String(typeof data.senderId === 'object' ? data.senderId?._id : data.senderId);
+      const currentIdStr = String(currentUserId);
+      const isOwnMessage = senderIdStr === currentIdStr;
+      const partnerId = isOwnMessage ? String(data.receiverId) : senderIdStr;
       const cacheKey = messageKeys.direct(teamId, partnerId);
 
       queryClient.setQueryData(cacheKey, (old = []) => {
-        if (data.tempId && old.some((m) => m.tempId === data.tempId)) {
-          return old.map((m) => (m.tempId === data.tempId ? { ...data, isSending: false } : m));
+        if (!Array.isArray(old)) return [data];
+
+        // 1. Reconcile optimistic message by tempId
+        if (data.tempId && old.some((m) => m.tempId === data.tempId || m._id === data.tempId)) {
+          return old.map((m) =>
+            m.tempId === data.tempId || m._id === data.tempId
+              ? { ...data, isSending: false }
+              : m
+          );
         }
-        if (old.some((m) => m._id === data._id)) return old;
+
+        // 2. Prevent duplicate by real database _id
+        if (old.some((m) => String(m._id) === String(data._id))) return old;
+
+        // 3. Fallback optimistic match by message text & sender
+        const optIdx = old.findIndex(
+          (m) =>
+            m.isSending &&
+            m.message === data.message &&
+            String(typeof m.senderId === 'object' ? m.senderId?._id : m.senderId) === senderIdStr
+        );
+        if (optIdx !== -1) {
+          const next = [...old];
+          next[optIdx] = { ...data, isSending: false };
+          return next;
+        }
+
         return [...old, data];
       });
 
@@ -314,11 +400,12 @@ export const useChatSocket = (teamId) => {
         },
       }));
 
-      if (senderIdStr !== currentUserId) {
+      if (senderIdStr !== currentIdStr) {
         const isLookingAtChat =
           window.location.pathname === '/messages' &&
-          activeConversation?.type === 'DM' &&
-          String(activeConversation?.id) === String(partnerId);
+          activeConvRef.current?.type === 'DM' &&
+          String(activeConvRef.current?.id) === String(partnerId) &&
+          !document.hidden;
 
         if (isLookingAtChat) {
           if (socket && socket.connected) {
@@ -327,6 +414,27 @@ export const useChatSocket = (teamId) => {
           api.patch(`/messages/read-all/${partnerId}`).catch(() => {});
         } else {
           incrementUnread(partnerId);
+          playNotificationBeep();
+          const senderName = data.senderName || data.senderId?.name || 'Direct Message';
+          toast(`💬 Message from ${senderName}`, {
+            description: data.message,
+            action: {
+              label: 'Reply',
+              onClick: () => {
+                setActiveConversation({
+                  type: 'DM',
+                  id: partnerId,
+                  name: senderName,
+                });
+                if (navigateRef.current) {
+                  navigateRef.current('/messages');
+                } else {
+                  window.location.href = '/messages';
+                }
+              },
+            },
+            duration: 5000,
+          });
         }
       }
     };
@@ -432,12 +540,12 @@ export const useChatSocket = (teamId) => {
   }, [
     teamId,
     currentUserId,
-    activeConversation,
     queryClient,
     incrementUnread,
     addTypingUser,
     removeTypingUser,
     setOnlineUsers,
     setUserPresence,
+    setActiveConversation,
   ]);
 };
