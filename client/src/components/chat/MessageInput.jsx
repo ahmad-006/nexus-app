@@ -87,7 +87,7 @@ export default function MessageInput({
   }, []);
 
   return (
-    <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 shrink-0">
+    <div className="p-3 pb-20 lg:pb-3 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 shrink-0">
       <div className="flex items-end gap-2.5">
         {/* Rounded Input Pill */}
         <div className="flex-1 bg-slate-100/90 dark:bg-slate-800 rounded-3xl border border-slate-200/80 dark:border-slate-700/80 px-4 py-2 flex items-center gap-2 focus-within:bg-white dark:focus-within:bg-slate-800 focus-within:border-slate-400 dark:focus-within:border-slate-600 transition-colors shadow-2xs">
