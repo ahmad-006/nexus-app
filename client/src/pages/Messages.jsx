@@ -51,6 +51,8 @@ export default function Messages() {
     unreadCounts,
     typingUsers,
     onlineUserIds,
+    showMobileList,
+    setShowMobileList,
   } = useChatStore();
 
   const { data: teamDetails } = useTeamDetails(activeTeamId);
@@ -61,7 +63,6 @@ export default function Messages() {
 
   const [memberSearch, setMemberSearch] = useState('');
   const [filterTab, setFilterTab] = useState('ALL'); // 'ALL' | 'DIRECT' | 'UNREAD'
-  const [showMobileList, setShowMobileList] = useState(false);
 
   // Initialize active conversation to Team Group by default
   useEffect(() => {
@@ -174,7 +175,7 @@ export default function Messages() {
     const curIdStr = String(currentUserId || '');
     return members
       .filter((m) => {
-        const mId = m.userId?._id || m.userId;
+        const mId = m.userId?._id || (typeof m.userId === 'string' ? m.userId : m._id);
         return String(mId || '') !== curIdStr;
       })
       .filter((m) => {
@@ -186,15 +187,15 @@ export default function Messages() {
         return name.includes(q) || email.includes(q);
       })
       .filter((m) => {
-        const mId = String(m.userId?._id || m.userId || '');
+        const mId = String(m.userId?._id || (typeof m.userId === 'string' ? m.userId : m._id) || '');
         if (filterTab === 'UNREAD') {
           return (unreadCounts[mId] || 0) > 0;
         }
         return true;
       })
       .sort((a, b) => {
-        const aId = String(a.userId?._id || a.userId || '');
-        const bId = String(b.userId?._id || b.userId || '');
+        const aId = String(a.userId?._id || (typeof a.userId === 'string' ? a.userId : a._id) || '');
+        const bId = String(b.userId?._id || (typeof b.userId === 'string' ? b.userId : b._id) || '');
         const aTime = conversationSummaries[aId]?.lastMessageTime
           ? new Date(conversationSummaries[aId].lastMessageTime).getTime()
           : 0;
@@ -229,7 +230,7 @@ export default function Messages() {
 
   return (
     <div className="w-full h-full min-h-[520px] bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-[0_4px_24px_rgb(0,0,0,0.03)] flex overflow-hidden">
-      {/* Left Pane: Conversations Navigation (Width: 320px) */}
+      {/* Left Pane: Conversations Navigation */}
       <aside
         className={`${
           showMobileList ? 'flex' : 'hidden md:flex'
@@ -313,7 +314,7 @@ export default function Messages() {
         </div>
 
         {/* Conversation Streams */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
+        <div className="flex-1 overflow-y-auto p-2 pb-24 md:pb-2 space-y-1 min-h-0">
           {/* Pinned Section: Workspace Group Room */}
           {showTeamRoom && (
             <div className="mb-2">
@@ -404,7 +405,7 @@ export default function Messages() {
             ) : (
               filteredMembers.map((member) => {
                 const u = member.userId || {};
-                const memberId = String(u._id || member.userId);
+                const memberId = String(u._id || (typeof member.userId === 'string' ? member.userId : member._id));
                 const memberName = u.name || member.email || 'Teammate';
                 const isSelected =
                   activeConversation?.type === 'DM' &&
