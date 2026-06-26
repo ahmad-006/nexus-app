@@ -36,12 +36,31 @@ export const getMessagesByTeam = catchAsync(async (req, res, next) => {
  */
 export const getMessagesByUsers = catchAsync(async (req, res) => {
   const { otherUserId, teamId } = req.params;
-  const { id: userId } = req.user;
+  const userId = req.user._id || req.user.id;
+
+  let resolvedOtherUserId = otherUserId;
+
+  // Defense-in-depth safeguard: If otherUserId is passed as a team member subdocument _id, resolve to actual userId
+  if (mongoose.Types.ObjectId.isValid(otherUserId)) {
+    const isDirectUser = await Message.exists({
+      $or: [{ senderId: otherUserId }, { receiverId: otherUserId }],
+    });
+    if (!isDirectUser) {
+      const Team = mongoose.model("Team");
+      const teamDoc = await Team.findOne(
+        { "members._id": otherUserId },
+        { "members.$": 1 }
+      );
+      if (teamDoc && teamDoc.members?.[0]?.userId) {
+        resolvedOtherUserId = teamDoc.members[0].userId.toString();
+      }
+    }
+  }
 
   const messages = await Message.find({
     $or: [
-      { senderId: userId, receiverId: otherUserId },
-      { senderId: otherUserId, receiverId: userId },
+      { senderId: userId, receiverId: resolvedOtherUserId },
+      { senderId: resolvedOtherUserId, receiverId: userId },
     ],
     teamId,
   })
