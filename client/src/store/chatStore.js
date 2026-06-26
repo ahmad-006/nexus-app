@@ -3,10 +3,13 @@ import { create } from 'zustand';
 const useChatStore = create((set) => ({
   // Active conversation is either { type: 'TEAM', id: 'team', name: 'Team Group' } or { type: 'DM', id: otherUserId, name: string, user: Object }
   activeConversation: { type: 'TEAM', id: 'team', name: 'Team Group' },
+  showMobileList: false,
   unreadCounts: {},
   typingUsers: {},
   onlineUserIds: new Set(),
   lastSeenMap: {},
+
+  setShowMobileList: (showMobileList) => set({ showMobileList }),
 
   setActiveConversation: (conversation) =>
     set({
