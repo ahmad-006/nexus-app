@@ -4,6 +4,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { socket } from '../../api/socket';
 import useAuthStore from '../../store/authStore';
+import useTeamStore from '../../store/teamStore';
+import { useTeamDetails } from '../../hooks/useTeams';
 import { toast } from 'sonner';
 import { useTicketComments, useTicketActivities, useAddComment, useDeleteComment, useUpdateComment } from '../../hooks/useTickets';
 import { ticketKeys } from '../../api/queryKeys';
@@ -39,6 +41,183 @@ const TicketActivity = ({ ticketId, teamId }) => {
   const [filterMode, setFilterMode] = useState('ALL'); // 'ALL' | 'COMMENTS'
   const [fetchingReplies, setFetchingReplies] = useState({});
   const [expandedDiffs, setExpandedDiffs] = useState({});
+
+  // Teammates resolution for @mentions
+  const { activeTeam } = useTeamStore();
+  const effectiveTeamId = teamId || activeTeam?._id;
+  const { data: teamDetails } = useTeamDetails(effectiveTeamId);
+
+  const teamMembers = useMemo(() => {
+    const list = [];
+    const membersSource = teamDetails?.members || activeTeam?.members || [];
+    membersSource.forEach((m) => {
+      const u = m.userId;
+      if (u && typeof u === 'object' && u.name) {
+        list.push({
+          _id: (u._id || m._id)?.toString(),
+          name: u.name,
+          email: u.email || '',
+          image: u.image || ''
+        });
+      } else if (m.name) {
+        list.push({
+          _id: m._id?.toString(),
+          name: m.name,
+          email: m.email || '',
+          image: m.image || ''
+        });
+      }
+    });
+    return list;
+  }, [teamDetails, activeTeam]);
+
+  // Mention Popover State
+  const [mentionState, setMentionState] = useState({
+    isOpen: false,
+    target: null, // 'newComment' | 'reply' | 'edit'
+    query: '',
+    atIndex: -1,
+    cursorIndex: 0,
+    selectedIndex: 0,
+  });
+  const mentionDropdownRef = useRef(null);
+
+  const filteredMembers = useMemo(() => {
+    if (!mentionState.isOpen) return [];
+    const q = (mentionState.query || '').toLowerCase().trim();
+    return teamMembers.filter((m) => {
+      const name = (m.name || '').toLowerCase();
+      const email = (m.email || '').toLowerCase();
+      return name.includes(q) || email.includes(q);
+    }).slice(0, 6);
+  }, [mentionState.isOpen, mentionState.query, teamMembers]);
+
+  // Dismiss mention popover on outside click
+  useEffect(() => {
+    if (!mentionState.isOpen) return;
+    const handleOutsideClick = (e) => {
+      if (mentionDropdownRef.current && !mentionDropdownRef.current.contains(e.target)) {
+        setMentionState((prev) => ({ ...prev, isOpen: false }));
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [mentionState.isOpen]);
+
+  // Clamp selection index
+  useEffect(() => {
+    if (mentionState.selectedIndex >= filteredMembers.length && filteredMembers.length > 0) {
+      setMentionState((prev) => ({ ...prev, selectedIndex: 0 }));
+    }
+  }, [filteredMembers.length, mentionState.selectedIndex]);
+
+  const handleMentionTextChange = (e, target, setter) => {
+    const val = e.target.value;
+    setter(val);
+
+    const cursorPos = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, cursorPos);
+    const match = textBeforeCursor.match(/(?:^|\s)@([a-zA-Z0-9._-]*)$/);
+
+    if (match) {
+      const atPos = textBeforeCursor.lastIndexOf('@');
+      setMentionState({
+        isOpen: true,
+        target,
+        query: match[1],
+        atIndex: atPos,
+        cursorIndex: cursorPos,
+        selectedIndex: 0,
+      });
+    } else {
+      if (mentionState.isOpen && mentionState.target === target) {
+        setMentionState((prev) => ({ ...prev, isOpen: false }));
+      }
+    }
+  };
+
+  const insertMention = (member) => {
+    if (!member || !mentionState.target) return;
+
+    let currentValue = '';
+    let setter = null;
+    let targetRef = null;
+
+    if (mentionState.target === 'newComment') {
+      currentValue = newComment;
+      setter = setNewComment;
+      targetRef = commentInputRef;
+    } else if (mentionState.target === 'reply') {
+      currentValue = replyText;
+      setter = setReplyText;
+      targetRef = replyInputRef;
+    } else if (mentionState.target === 'edit') {
+      currentValue = editText;
+      setter = setEditText;
+      targetRef = editInputRef;
+    }
+
+    if (!setter) return;
+
+    const atPos = mentionState.atIndex;
+    const textBefore = currentValue.slice(0, atPos);
+    const mentionText = `@${member.name} `;
+    const textAfter = currentValue.slice(mentionState.cursorIndex);
+    const updatedValue = textBefore + mentionText + textAfter;
+
+    setter(updatedValue);
+    setMentionState({
+      isOpen: false,
+      target: null,
+      query: '',
+      atIndex: -1,
+      cursorIndex: 0,
+      selectedIndex: 0,
+    });
+
+    const nextCursor = atPos + mentionText.length;
+    setTimeout(() => {
+      if (targetRef?.current) {
+        targetRef.current.focus();
+        targetRef.current.setSelectionRange(nextCursor, nextCursor);
+      }
+    }, 0);
+  };
+
+  const handleMentionKeyDown = (e, target, fallbackHandler) => {
+    if (mentionState.isOpen && mentionState.target === target && filteredMembers.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionState((prev) => ({
+          ...prev,
+          selectedIndex: (prev.selectedIndex + 1) % filteredMembers.length,
+        }));
+        return true;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionState((prev) => ({
+          ...prev,
+          selectedIndex: (prev.selectedIndex - 1 + filteredMembers.length) % filteredMembers.length,
+        }));
+        return true;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        insertMention(filteredMembers[mentionState.selectedIndex]);
+        return true;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMentionState((prev) => ({ ...prev, isOpen: false }));
+        return true;
+      }
+    }
+    if (fallbackHandler) {
+      fallbackHandler(e);
+    }
+    return false;
+  };
 
   const toggleDiff = (id) => {
     setExpandedDiffs((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -378,15 +557,38 @@ const TicketActivity = ({ ticketId, teamId }) => {
     });
   };
 
+  const validMemberNames = useMemo(() => {
+    const names = new Set();
+    teamMembers.forEach((m) => {
+      if (m?.name?.trim()) names.add(m.name.trim());
+    });
+    comments.forEach((c) => {
+      if (c?.author?.name?.trim()) names.add(c.author.name.trim());
+      c?.replies?.forEach((r) => {
+        if (r?.author?.name?.trim()) names.add(r.author.name.trim());
+      });
+    });
+    return Array.from(names).sort((a, b) => b.length - a.length);
+  }, [teamMembers, comments]);
+
   const renderFormattedText = (text) => {
     if (!text) return null;
-    const parts = text.split(/(@[A-Za-z0-9._-]+)/g);
+    if (validMemberNames.length === 0) return text;
+
+    const escapeReg = (s) => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const namesPattern = validMemberNames.map(escapeReg).join('|');
+    const mentionRegex = new RegExp(`(@(?:${namesPattern}))(?=[^a-zA-Z0-9]|$)`, 'gi');
+
+    const parts = text.split(mentionRegex);
     return parts.map((part, index) => {
-      if (part.startsWith('@') && part.length > 1) {
+      if (
+        part.startsWith('@') &&
+        validMemberNames.some((name) => part.slice(1).toLowerCase() === name.toLowerCase())
+      ) {
         return (
           <span
             key={index}
-            className="font-semibold text-slate-900 bg-slate-100/90 px-1.5 py-0.5 rounded text-[13px] border border-slate-200/80"
+            className="inline-flex items-center font-semibold text-slate-900 bg-slate-100/90 px-1.5 py-0.5 rounded text-[13px] border border-slate-200/80"
           >
             {part}
           </span>
@@ -394,6 +596,55 @@ const TicketActivity = ({ ticketId, teamId }) => {
       }
       return part;
     });
+  };
+
+  const renderMentionDropdown = (target) => {
+    if (!mentionState.isOpen || mentionState.target !== target || filteredMembers.length === 0) {
+      return null;
+    }
+
+    return (
+      <div 
+        ref={mentionDropdownRef}
+        className="absolute z-50 left-0 top-full mt-1.5 w-64 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100"
+      >
+        <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center justify-between bg-slate-50/50">
+          <span>Teammates</span>
+          <span className="text-[9px] text-slate-400">↑↓ to pick • ↵ to select</span>
+        </div>
+        <div className="max-h-48 overflow-y-auto py-0.5">
+          {filteredMembers.map((member, idx) => (
+            <button
+              key={member._id}
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                insertMention(member);
+              }}
+              className={`flex items-center gap-2.5 w-full px-3 py-1.5 text-left cursor-pointer transition-colors ${
+                idx === mentionState.selectedIndex
+                  ? 'bg-slate-100 font-semibold text-slate-900'
+                  : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <div className="w-5 h-5 rounded-full bg-slate-200 overflow-hidden shrink-0 flex items-center justify-center border border-slate-200/60 text-[9px] font-bold text-slate-700">
+                {member.image ? (
+                  <img src={member.image} alt={member.name} className="w-full h-full object-cover" />
+                ) : (
+                  (member.name || 'U').charAt(0).toUpperCase()
+                )}
+              </div>
+              <div className="truncate flex-1">
+                <div className="text-xs truncate leading-tight">{member.name}</div>
+                {member.email && (
+                  <div className="text-[10px] font-mono text-slate-400 truncate">{member.email}</div>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   if (isLoading && comments.length === 0) {
@@ -486,8 +737,8 @@ const TicketActivity = ({ ticketId, teamId }) => {
                 ref={commentInputRef}
                 value={newComment}
                 onFocus={() => setIsInputFocused(true)}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Add a comment..."
+                onChange={(e) => handleMentionTextChange(e, 'newComment', setNewComment)}
+                placeholder="Add a comment... (Type @ to mention teammates)"
                 rows={isInputFocused || newComment.length > 0 ? 2 : 1}
                 className={`w-full bg-transparent text-[14px] md:text-[15px] text-slate-800 placeholder-slate-400 focus:outline-none resize-none transition-all py-1 ${
                   isInputFocused || newComment.length > 0
@@ -495,12 +746,15 @@ const TicketActivity = ({ ticketId, teamId }) => {
                     : 'border-b border-slate-300 min-h-[36px]'
                 }`}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
+                  handleMentionKeyDown(e, 'newComment', (ev) => {
+                    if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
+                      ev.preventDefault();
+                      handleSubmit(ev);
+                    }
+                  });
                 }}
               />
+              {renderMentionDropdown('newComment')}
             </div>
 
             {/* Action Row (Appears when focused or has text, exactly like YouTube) */}
@@ -664,20 +918,25 @@ const TicketActivity = ({ ticketId, teamId }) => {
                   {/* Main Comment Text or Edit Form */}
                   {editingId === comment._id ? (
                     <div className="mt-2 flex flex-col gap-2 animate-in fade-in duration-150">
-                      <textarea
-                        ref={editInputRef}
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        className="w-full min-h-[75px] bg-white border border-slate-300 rounded-lg p-3 text-[14px] text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/50 focus:border-slate-900 transition-all resize-none shadow-sm"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleEditSubmit(comment._id);
-                          } else if (e.key === 'Escape') {
-                            cancelEditing();
-                          }
-                        }}
-                      />
+                      <div className="relative">
+                        <textarea
+                          ref={editInputRef}
+                          value={editText}
+                          onChange={(e) => handleMentionTextChange(e, 'edit', setEditText)}
+                          className="w-full min-h-[75px] bg-white border border-slate-300 rounded-lg p-3 text-[14px] text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/50 focus:border-slate-900 transition-all resize-none shadow-sm"
+                          onKeyDown={(e) => {
+                            handleMentionKeyDown(e, 'edit', (ev) => {
+                              if (ev.key === 'Enter' && !ev.shiftKey) {
+                                ev.preventDefault();
+                                handleEditSubmit(comment._id);
+                              } else if (ev.key === 'Escape') {
+                                cancelEditing();
+                              }
+                            });
+                          }}
+                        />
+                        {renderMentionDropdown('edit')}
+                      </div>
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
@@ -764,20 +1023,25 @@ const TicketActivity = ({ ticketId, teamId }) => {
                             </div>
                             {editingId === reply._id ? (
                               <div className="mt-1.5 flex flex-col gap-2 animate-in fade-in duration-150">
-                                <textarea
-                                  ref={editInputRef}
-                                  value={editText}
-                                  onChange={(e) => setEditText(e.target.value)}
-                                  className="w-full min-h-[60px] bg-white border border-slate-300 rounded-lg p-2.5 text-[13.5px] text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/50 focus:border-slate-900 transition-all resize-none shadow-sm"
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault();
-                                      handleEditSubmit(reply._id);
-                                    } else if (e.key === 'Escape') {
-                                      cancelEditing();
-                                    }
-                                  }}
-                                />
+                                <div className="relative">
+                                  <textarea
+                                    ref={editInputRef}
+                                    value={editText}
+                                    onChange={(e) => handleMentionTextChange(e, 'edit', setEditText)}
+                                    className="w-full min-h-[60px] bg-white border border-slate-300 rounded-lg p-2.5 text-[13.5px] text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/50 focus:border-slate-900 transition-all resize-none shadow-sm"
+                                    onKeyDown={(e) => {
+                                      handleMentionKeyDown(e, 'edit', (ev) => {
+                                        if (ev.key === 'Enter' && !ev.shiftKey) {
+                                          ev.preventDefault();
+                                          handleEditSubmit(reply._id);
+                                        } else if (ev.key === 'Escape') {
+                                          cancelEditing();
+                                        }
+                                      });
+                                    }}
+                                  />
+                                  {renderMentionDropdown('edit')}
+                                </div>
                                 <div className="flex items-center justify-end gap-2">
                                   <button
                                     type="button"
@@ -833,16 +1097,19 @@ const TicketActivity = ({ ticketId, teamId }) => {
                         <textarea
                           ref={replyInputRef}
                           value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                          placeholder={`Reply to ${comment.author?.name?.split(' ')[0] || 'comment'}...`}
+                          onChange={(e) => handleMentionTextChange(e, 'reply', setReplyText)}
+                          placeholder={`Reply to ${comment.author?.name?.split(' ')[0] || 'comment'}... (Type @ to mention)`}
                           className="w-full min-h-[80px] bg-white border border-slate-300 rounded-lg p-3 text-[14px] text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/50 focus:border-slate-900 transition-all resize-none shadow-sm"
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              handleReplySubmit(comment._id);
-                            }
+                            handleMentionKeyDown(e, 'reply', (ev) => {
+                              if (ev.key === 'Enter' && !ev.shiftKey) {
+                                ev.preventDefault();
+                                handleReplySubmit(comment._id);
+                              }
+                            });
                           }}
                         />
+                        {renderMentionDropdown('reply')}
                         <div className="absolute bottom-2 right-2 flex items-center gap-2">
                           <button
                             onClick={() => {
