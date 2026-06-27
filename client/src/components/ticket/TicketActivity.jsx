@@ -69,17 +69,20 @@ const TicketActivity = ({ ticketId, teamId }) => {
 
     const handleReceiveComment = (newCommentData) => {
       queryClient.setQueryData(ticketKeys.comments(ticketId), (prev = []) => {
-        if (prev.some(c => c._id === newCommentData._id)) return prev;
-        
         if (!newCommentData.parentCommentId) {
+          if (prev.some(c => String(c._id) === String(newCommentData._id))) return prev;
           return [newCommentData, ...prev]; // Prepend to top since input is at the top (newest first)
         }
         
         return prev.map(c => {
-          if (c._id === newCommentData.parentCommentId) {
+          if (String(c._id) === String(newCommentData.parentCommentId)) {
+            const replies = c.replies || [];
+            if (replies.some(r => String(r._id) === String(newCommentData._id))) {
+              return c;
+            }
             return {
               ...c,
-              replies: [...(c.replies || []), newCommentData],
+              replies: [...replies, newCommentData],
               replyCount: (c.replyCount || 0) + 1
             };
           }
@@ -91,14 +94,14 @@ const TicketActivity = ({ ticketId, teamId }) => {
     const handleUpdateComment = (updatedData) => {
       queryClient.setQueryData(ticketKeys.comments(ticketId), (prev = []) =>
         prev.map(c => {
-          if (c._id === updatedData._id) {
+          if (String(c._id) === String(updatedData._id)) {
             return { ...c, text: updatedData.text, isEdited: true };
           }
-          if (c.replies && c.replies.some(r => r._id === updatedData._id)) {
+          if (c.replies && c.replies.some(r => String(r._id) === String(updatedData._id))) {
             return {
               ...c,
               replies: c.replies.map(r =>
-                r._id === updatedData._id ? { ...r, text: updatedData.text, isEdited: true } : r
+                String(r._id) === String(updatedData._id) ? { ...r, text: updatedData.text, isEdited: true } : r
               ),
             };
           }
@@ -109,12 +112,12 @@ const TicketActivity = ({ ticketId, teamId }) => {
 
     const handleDeleteComment = (deletedData) => {
       queryClient.setQueryData(ticketKeys.comments(ticketId), (prev = []) => {
-        const filtered = prev.filter(c => c._id !== deletedData._id);
+        const filtered = prev.filter(c => String(c._id) !== String(deletedData._id));
         return filtered.map(c => {
-          if (c.replies && c.replies.some(r => r._id === deletedData._id)) {
+          if (c.replies && c.replies.some(r => String(r._id) === String(deletedData._id))) {
             return {
               ...c,
-              replies: c.replies.filter(r => r._id !== deletedData._id),
+              replies: c.replies.filter(r => String(r._id) !== String(deletedData._id)),
               replyCount: Math.max(0, (c.replyCount || 1) - 1),
             };
           }
@@ -802,7 +805,7 @@ const TicketActivity = ({ ticketId, teamId }) => {
                         </div>
                       ))}
                       
-                      {comment.replyCount > 2 && !comment.isFullyExpanded && (
+                      {comment.replyCount > 2 && (comment.replies?.length || 0) < comment.replyCount && !comment.isFullyExpanded && (
                         <button 
                           onClick={() => handleFetchReplies(comment._id)}
                           disabled={fetchingReplies[comment._id]}

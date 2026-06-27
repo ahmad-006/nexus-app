@@ -40,7 +40,7 @@ export const getComments = catchAsync(async (req, res, next) => {
         let: { commentId: "$_id" },
         pipeline: [
           { $match: { $expr: { $eq: ["$parentCommentId", "$$commentId"] } } },
-          { $sort: { createdAt: -1 } },
+          { $sort: { createdAt: 1 } },
           { $limit: 2 },
           {
             $lookup: {

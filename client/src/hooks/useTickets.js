@@ -475,15 +475,21 @@ export const useAddComment = (ticketId, teamId) => {
     },
     onSuccess: (newComment, variables) => {
       queryClient.setQueryData(ticketKeys.comments(ticketId), (oldComments = []) => {
-        if (oldComments.some((c) => c._id === newComment._id)) return oldComments;
         if (!variables.parentId) {
+          if (oldComments.some((c) => String(c._id) === String(newComment._id))) {
+            return oldComments;
+          }
           return [newComment, ...oldComments];
         }
         return oldComments.map((c) => {
-          if (c._id === variables.parentId) {
+          if (String(c._id) === String(variables.parentId)) {
+            const replies = c.replies || [];
+            if (replies.some((r) => String(r._id) === String(newComment._id))) {
+              return c;
+            }
             return {
               ...c,
-              replies: [...(c.replies || []), newComment],
+              replies: [...replies, newComment],
               replyCount: (c.replyCount || 0) + 1,
             };
           }
