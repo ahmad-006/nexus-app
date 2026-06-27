@@ -1,13 +1,3 @@
----
-title: Nexus Platform
-emoji: 🚀
-colorFrom: indigo
-colorTo: purple
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # NEXUS — Real-Time Ticket Management & Engineering Workspace
 
 NEXUS is a real-time collaborative engineering workspace and ticket management platform architected on React, Express 5, MongoDB Atlas, and Socket.io, powered by the Bun runtime.
