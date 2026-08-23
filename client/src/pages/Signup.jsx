@@ -32,37 +32,26 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen flex bg-[#FAFAFA] font-sans">
-      {/* Left Side - Brand / Editorial */}
-      <div className="hidden lg:flex w-1/2 bg-blue-900 flex-col justify-between p-12 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-800/40 via-transparent to-transparent"></div>
+      {/* Left Side - Graphic/Branding */}
+      <div className="hidden lg:flex w-1/2 bg-[#F8F9FA] flex-col justify-between p-12 relative overflow-hidden border-r border-slate-200">
+        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-slate-200/50 via-transparent to-transparent"></div>
         
-        <div className="relative z-10 flex items-center gap-3">
-          <Hexagon className="h-8 w-8 text-amber-500" strokeWidth={2.5} />
-          <span className="font-serif text-3xl font-bold tracking-tight text-white">NEXUS</span>
-        </div>
+        <Link to="/" className="relative z-10 flex items-center gap-3 hover:opacity-90 transition-opacity w-fit">
+          <Hexagon className="h-8 w-8 text-slate-900" strokeWidth={2.5} />
+          <span className="font-serif text-3xl font-bold tracking-tight text-slate-900">NEXUS</span>
+        </Link>
 
         <div className="relative z-10 max-w-lg">
-          <h2 className="font-serif text-5xl italic text-amber-500 mb-8 leading-tight">
-            "Amateurs sit and wait for inspiration, the rest of us just get up and go to work."
+          <h2 className="font-serif text-5xl italic text-slate-900 mb-8 leading-tight">
+            "Great things are not done by impulse, but by a series of small things brought together."
           </h2>
-          
-          <ul className="space-y-4 text-blue-100">
-             <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-amber-500" size={20} />
-                <span>Unlimited workspaces and boards</span>
-             </li>
-             <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-amber-500" size={20} />
-                <span>End-to-end encrypted messaging</span>
-             </li>
-             <li className="flex items-center gap-3">
-                <CheckCircle2 className="text-amber-500" size={20} />
-                <span>Full access to the Omniscient Search</span>
-             </li>
-          </ul>
+          <div className="flex items-center gap-4 text-slate-500">
+            <div className="h-px flex-1 bg-slate-300"></div>
+            <p className="font-light tracking-wide uppercase text-sm">Join the Elite</p>
+          </div>
         </div>
 
-        <div className="relative z-10 text-blue-400 text-sm">
+        <div className="relative z-10 text-slate-400 text-sm">
           © 2026 NEXUS Workspace
         </div>
       </div>
@@ -70,10 +59,10 @@ const Signup = () => {
       {/* Right Side - Auth Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 overflow-y-auto">
         <div className="w-full max-w-md py-8">
-          <div className="lg:hidden flex items-center gap-3 mb-12">
+          <Link to="/" className="lg:hidden flex items-center gap-3 mb-12 hover:opacity-80 transition-opacity w-fit">
             <Hexagon className="h-8 w-8 text-blue-900" strokeWidth={2.5} />
             <span className="font-serif text-3xl font-bold tracking-tight text-blue-900">NEXUS</span>
-          </div>
+          </Link>
 
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Create your workspace</h1>
           <p className="text-slate-500 mb-8">Join the elite engineering teams building on Nexus.</p>

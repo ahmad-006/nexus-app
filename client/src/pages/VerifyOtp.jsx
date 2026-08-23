@@ -66,25 +66,25 @@ const VerifyOtp = () => {
 
   return (
     <div className="min-h-screen flex bg-[#FAFAFA] font-sans">
-      {/* Left Side - Brand / Editorial */}
-      <div className="hidden lg:flex w-1/2 bg-blue-900 flex-col justify-between p-12 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-800/40 via-transparent to-transparent"></div>
+      {/* Left Side - Graphic/Branding */}
+      <div className="hidden lg:flex w-1/2 bg-[#F8F9FA] flex-col justify-between p-12 relative overflow-hidden border-r border-slate-200">
+        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-slate-200/50 via-transparent to-transparent"></div>
         
-        <div className="relative z-10 flex items-center gap-3">
-          <Hexagon className="h-8 w-8 text-amber-500" strokeWidth={2.5} />
-          <span className="font-serif text-3xl font-bold tracking-tight text-white">NEXUS</span>
-        </div>
+        <Link to="/" className="relative z-10 flex items-center gap-3 hover:opacity-90 transition-opacity w-fit">
+          <Hexagon className="h-8 w-8 text-slate-900" strokeWidth={2.5} />
+          <span className="font-serif text-3xl font-bold tracking-tight text-slate-900">NEXUS</span>
+        </Link>
 
         <div className="relative z-10 max-w-lg">
-          <h2 className="font-serif text-5xl italic text-amber-500 mb-6 leading-tight">
-            "Trust is built with consistency."
+          <h2 className="font-serif text-5xl italic text-slate-900 mb-6 leading-tight">
+            "Security is not a product, but a process."
           </h2>
-          <p className="text-blue-200 text-lg font-light">
-            We require email verification to ensure your workspace remains a strictly guarded sanctuary.
+          <p className="text-slate-500 text-lg font-light">
+            We employ military-grade verification to ensure your workspace remains a sanctuary.
           </p>
         </div>
 
-        <div className="relative z-10 text-blue-400 text-sm">
+        <div className="relative z-10 text-slate-400 text-sm">
           © 2026 NEXUS Workspace
         </div>
       </div>
@@ -92,10 +92,10 @@ const VerifyOtp = () => {
       {/* Right Side - Auth Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 overflow-y-auto">
         <div className="w-full max-w-md py-8">
-          <div className="lg:hidden flex items-center gap-3 mb-12">
+          <Link to="/" className="lg:hidden flex items-center gap-3 mb-12 hover:opacity-80 transition-opacity w-fit">
             <Hexagon className="h-8 w-8 text-blue-900" strokeWidth={2.5} />
             <span className="font-serif text-3xl font-bold tracking-tight text-blue-900">NEXUS</span>
-          </div>
+          </Link>
 
           <Link to="/login" className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-blue-900 uppercase tracking-wider mb-8 transition-colors">
             <ArrowLeft size={14} /> Back to Login
