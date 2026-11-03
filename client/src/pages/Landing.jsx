@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -12,13 +13,43 @@ import {
   AlignLeft,
   ChevronDown,
   Lock,
-  Plus
+  Plus,
+  Sparkles,
+  Building2,
+  Check
 } from 'lucide-react';
 import nexusLogo from '../assets/nexus_logo.png';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
+const PRESETS = {
+  Engineering: [
+    { title: 'Deploy staging environment', priority: 'High', tag: 'NEX-01' },
+    { title: 'Review pull request #42', priority: 'Normal', tag: 'NEX-02' },
+    { title: 'Invite team to #engineering chat', priority: 'Done', tag: 'NEX-03' },
+  ],
+  'Product Design': [
+    { title: 'Finalize typography tokens', priority: 'High', tag: 'DES-01' },
+    { title: 'Mobile touch target review', priority: 'Normal', tag: 'DES-02' },
+    { title: 'Share assets with developers', priority: 'Done', tag: 'DES-03' },
+  ],
+  'Startup / Sprints': [
+    { title: 'Map first product milestone', priority: 'High', tag: 'SPR-01' },
+    { title: 'Set up weekly task board', priority: 'Normal', tag: 'SPR-02' },
+    { title: 'Invite co-founders & contributors', priority: 'Done', tag: 'SPR-03' },
+  ],
+};
+
 const Landing = () => {
   useDocumentTitle('Nexus | Simple Project Workspace for Teams');
+  const [teamName, setTeamName] = useState('Acme Core');
+  const [selectedCategory, setSelectedCategory] = useState('Engineering');
+
+  const getInitials = (name) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'NX';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  };
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#141311] font-sans selection:bg-[#E8DFD1] selection:text-[#141311] antialiased">
@@ -563,38 +594,141 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* 8. Honest, Calm Closing Section (100% Free, No fake trials, No neon orbs) */}
-      <section className="bg-[#141311] text-[#FAF8F5] py-24 sm:py-32 px-4 sm:px-8 border-t border-[#29241E] text-center">
-        <div className="max-w-3xl mx-auto">
+      {/* 8. Interactive Warm Studio Closing Section (Completely Light & Seamless) */}
+      <section className="bg-[#F6F2E9] border-t border-[#E8E1D5] py-24 sm:py-32 px-4 sm:px-8">
+        <div className="max-w-3xl mx-auto text-center">
           
-          <h2 className="text-3xl sm:text-5xl font-normal tracking-tight leading-tight mb-6">
-            Get your team organized today. <br />
-            <span className="font-serif italic text-[#C7A35F]">Completely free.</span>
+          <span className="text-xs font-mono uppercase tracking-widest text-[#827869] font-semibold block mb-3">
+            START YOUR WORKSPACE IN SECONDS
+          </span>
+
+          <h2 className="text-3xl sm:text-5xl font-normal tracking-tight text-[#141311] leading-tight mb-5">
+            Your next project starts here. <br />
+            <span className="font-serif italic text-[#966F2D]">Simple and free.</span>
           </h2>
 
-          <p className="text-[#A39988] text-base sm:text-lg max-w-lg mx-auto mb-10 leading-relaxed">
-            Create your workspace in seconds. Invite your teammates and start tracking tasks with zero friction.
+          <p className="text-[#4A4338] text-base sm:text-lg max-w-xl mx-auto mb-10 leading-relaxed font-normal">
+            No credit cards, no lengthy onboarding. Type your team or project name below to see your space come to life.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <Link
-              to="/signup"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#FAF8F5] hover:bg-white text-[#141311] px-8 py-3.5 text-sm sm:text-base font-semibold rounded-lg shadow-sm hover:-translate-y-0.5 transition-all"
-            >
-              <span>Create your free workspace</span>
-              <ArrowRight size={16} />
-            </Link>
-            <Link
-              to="/login"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#211E1A] hover:bg-[#2E2A24] text-[#FAF8F5] px-6 py-3.5 text-sm sm:text-base font-medium rounded-lg border border-[#383228] transition-all"
-            >
-              <span>Sign in</span>
-            </Link>
+          {/* Interactive Workspace Sandbox Card */}
+          <div className="bg-white border border-[#E3DACB] rounded-2xl p-6 sm:p-9 shadow-[0_12px_45px_-10px_rgba(25,20,15,0.06)] text-left mb-8">
+            
+            {/* Input & Category Selection */}
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-[#6B6253] block mb-2">
+                  1. Workspace Name
+                </label>
+                <input
+                  type="text"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder="e.g. Acme Studio, Alpha Core..."
+                  className="w-full bg-[#FAF8F5] border border-[#DDD3C2] focus:border-[#966F2D] rounded-lg px-4 py-3 text-sm font-medium text-[#141311] outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-[#6B6253] block mb-2">
+                  2. Choose Team Focus
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {Object.keys(PRESETS).map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`text-xs font-medium px-3 py-1.5 rounded-md border transition-all cursor-pointer ${
+                        selectedCategory === cat
+                          ? 'bg-[#141311] text-[#FAF7F2] border-[#141311] shadow-2xs'
+                          : 'bg-[#FAF8F5] text-[#544D41] border-[#DDD3C2] hover:bg-[#F2ECE1]'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Live Interactive Workspace Preview */}
+            <div className="bg-[#FAF8F5] border border-[#E8E1D5] rounded-xl p-4 sm:p-5 space-y-3.5">
+              <div className="flex items-center justify-between pb-3 border-b border-[#EAE3D6]">
+                <div className="flex items-center gap-2.5">
+                  <span className="h-7 w-7 rounded bg-[#141311] text-[#FAF7F2] text-xs font-mono font-bold flex items-center justify-center">
+                    {getInitials(teamName)}
+                  </span>
+                  <div>
+                    <span className="text-xs font-semibold text-[#141311]">
+                      {teamName.trim() || 'My Team'} Workspace
+                    </span>
+                    <span className="text-[11px] text-[#7A7162] block">
+                      {selectedCategory} • Ready to initialize
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono font-semibold text-[#2D6A42] bg-[#EAF5ED] border border-[#CDE5D4] px-2 py-0.5 rounded">
+                  Free Forever
+                </span>
+              </div>
+
+              {/* Sample Starter Tasks */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-mono text-[#827869] block">STARTER DELIVERABLES:</span>
+                {PRESETS[selectedCategory].map((task, i) => (
+                  <div key={i} className="bg-white border border-[#E3DACB] p-2.5 rounded-lg flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-[#857B6C]">{task.tag}</span>
+                      <span className={`text-[#141311] font-medium ${task.priority === 'Done' ? 'line-through text-[#7A7162]' : ''}`}>
+                        {task.title}
+                      </span>
+                    </div>
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                      task.priority === 'High' 
+                        ? 'text-[#8C6225] bg-[#FAF3E6] border border-[#EADBBD]' 
+                        : task.priority === 'Done'
+                        ? 'text-[#2D6A42] bg-[#EAF5ED]'
+                        : 'text-[#5C5446] bg-[#F2EDE4]'
+                    }`}>
+                      {task.priority}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Launch Action */}
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#F0EAE0]">
+              <Link
+                to="/signup"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#141311] hover:bg-[#26221D] text-[#FAF7F2] px-7 py-3 text-sm font-semibold rounded-lg shadow-sm hover:-translate-y-0.5 transition-all"
+              >
+                <span>Launch "{teamName.trim() || 'My Team'}" Workspace</span>
+                <ArrowRight size={15} className="text-[#C7B596]" />
+              </Link>
+              <Link
+                to="/login"
+                className="text-xs text-[#6B6253] hover:text-[#141311] transition-colors"
+              >
+                Already have an account? Sign in →
+              </Link>
+            </div>
+
           </div>
 
-          <p className="text-xs font-mono text-[#786E5E]">
-            Free for all teams • No credit card required • No hidden limits
-          </p>
+          {/* Reassurance Badges */}
+          <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-[#6B6253]">
+            <span className="flex items-center gap-1.5">
+              <Check size={14} className="text-[#2D6A42]" /> 100% free for all teams
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Check size={14} className="text-[#2D6A42]" /> Unlimited tasks and channels
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Check size={14} className="text-[#2D6A42]" /> No credit card required
+            </span>
+          </div>
 
         </div>
       </section>
