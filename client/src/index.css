@@ -6,6 +6,10 @@
   --font-serif: "Playfair Display", serif;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
